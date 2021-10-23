@@ -127,17 +127,16 @@ class mainWidget(QtWidgets.QWidget):
         if metaCommand == "help":
             self.helpMenu()
         if metaCommand == "cmd":
-            self.sendCommand(subCommand)
-            self.textEdit.append(f"Command has been sent to implant: cmd {subCommand}\n")
-        if metaCommand == "list-results":
-            self.list_results()
+            self.execCommand(subCommand)
+        if metaCommand == "ps":
+            self.listProcesses()
         if metaCommand == "clear":
             self.textEdit.clear()
 
     def helpMenu(self):
         r1 = "{0:<8s} -   {1}".format("help", "This help menu.")
         r2 = "{0:<8s}-   {1}".format("cmd", "Execute a command.")
-        r3 = "{0:<8s} -   {1}".format("list-results", "Lists the results from implant.")
+        r3 = "{0:<8s} -   {1}".format("ps", "List the running processes.")
         r4 = "{0:<8s} -   {1}".format("clear", "Clear output from display.")
         menu = "{}<br>{}<br>{}<br>{}".format(r1, r2, r3, r4)
         self.textEdit.append(TextColors.Green(menu))
@@ -207,13 +206,21 @@ class mainWidget(QtWidgets.QWidget):
         except:
             return
 
-    def sendCommand(self, command):
+    def execCommand(self, command):
+        self.textEdit.append(f"Command has been sent to implant: cmd {command}\n")
         api_endpoint = "/tasks"
         #print("\nHere are the tasks that were added:\n")
         request_payload_string = f'[{{"task_type":"execute","command":"{command}"}}]'
         request_payload = json.loads(request_payload_string,cls=LazyDecoder)
         api_post_request(api_endpoint, request_payload)
         #pprint.pprint(api_post_request(api_endpoint, request_payload))
+    
+    def listProcesses(self):
+        self.textEdit.append("Command has been executed\n")
+        api_endpoint = "/tasks"
+        request_payload_string = '[{"task_type":"list-processes"}]'
+        request_payload = json.loads(request_payload_string)
+        api_post_request(api_endpoint, request_payload)
 
 
 class GuiMainWindow(QtWidgets.QMainWindow):

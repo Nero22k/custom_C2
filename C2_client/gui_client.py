@@ -74,8 +74,8 @@ class mainWidget(QtWidgets.QWidget):
         self.tableWidget.setObjectName(u"tableWidget")
         self.tableWidget.verticalHeader().setVisible(False)
         self.tableWidget.setFixedHeight(150)
-        self.tableWidget.setColumnCount(7)
-        self.tableWidget.setHorizontalHeaderLabels(['Beacon ID','IP','Hostname','OS Version','Process name','PID','Architecture'])
+        self.tableWidget.setColumnCount(8)
+        self.tableWidget.setHorizontalHeaderLabels(['Beacon ID','External IP','Internal IP','Hostname','OS Version','Process name','PID','Architecture'])
         self.tableWidget.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Stretch) # Fit to window :)
         # Table color, font and position on the grid
         self.tableWidget.setStyleSheet("background: #282a36; ")
@@ -163,6 +163,7 @@ class mainWidget(QtWidgets.QWidget):
         pid = output["PID"][::]
         beacon_id = output["beacon_id"][::]
         proc_name = output["Process Name"][::]
+        pub_ip = output["Public IP"][::]
         win_ver = output["Windows Version"][::]
 
         # Create row when beacon connects and add new row for each beacon connected
@@ -170,12 +171,13 @@ class mainWidget(QtWidgets.QWidget):
         self.tableWidget.insertRow(self.currentRowCount)
 
         self.tableWidget.setItem(self.currentRowCount, 0, QtWidgets.QTableWidgetItem(beacon_id))
-        self.tableWidget.setItem(self.currentRowCount, 1, QtWidgets.QTableWidgetItem(ip_addr))
-        self.tableWidget.setItem(self.currentRowCount, 2, QtWidgets.QTableWidgetItem(hostname))
-        self.tableWidget.setItem(self.currentRowCount, 3, QtWidgets.QTableWidgetItem(win_ver))
-        self.tableWidget.setItem(self.currentRowCount, 4, QtWidgets.QTableWidgetItem(proc_name))
-        self.tableWidget.setItem(self.currentRowCount, 5, QtWidgets.QTableWidgetItem(pid))
-        self.tableWidget.setItem(self.currentRowCount, 6, QtWidgets.QTableWidgetItem(arch))
+        self.tableWidget.setItem(self.currentRowCount, 1, QtWidgets.QTableWidgetItem(pub_ip))
+        self.tableWidget.setItem(self.currentRowCount, 2, QtWidgets.QTableWidgetItem(ip_addr))
+        self.tableWidget.setItem(self.currentRowCount, 3, QtWidgets.QTableWidgetItem(hostname))
+        self.tableWidget.setItem(self.currentRowCount, 4, QtWidgets.QTableWidgetItem(win_ver))
+        self.tableWidget.setItem(self.currentRowCount, 5, QtWidgets.QTableWidgetItem(proc_name))
+        self.tableWidget.setItem(self.currentRowCount, 6, QtWidgets.QTableWidgetItem(pid))
+        self.tableWidget.setItem(self.currentRowCount, 7, QtWidgets.QTableWidgetItem(arch))
 
     def getOutput(self):
         api_endpoint = "/results"

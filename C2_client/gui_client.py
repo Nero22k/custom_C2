@@ -10,7 +10,7 @@ import json
 BR, FT, FR, FG, FY, FB, FM, FC, ST, SD, SB = B.RED, F.RESET, F.RED, F.GREEN, F.YELLOW, F.BLUE, F.MAGENTA, F.CYAN, S.RESET_ALL, S.DIM, S.BRIGHT
 
 # Configuration Settings
-listening_mgr_addr = "http://192.168.1.5:5000"
+listening_mgr_addr = "http://192.168.1.3:5000"
 
 def bullet(char, color):
     C = FB if color == 'B' else FR if color == 'R' else FG

@@ -25,6 +25,7 @@ api.add_resource(resources.Tasks, '/tasks', endpoint='tasks')
 api.add_resource(resources.Results, '/results')
 api.add_resource(resources.History, '/history')
 api.add_resource(resources.Registers, '/reg')
+api.add_resource(resources.Ping, '/ping')
 
 # Start the Flask app in debug mode
 if __name__ == '__main__':

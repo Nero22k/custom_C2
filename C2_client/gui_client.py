@@ -255,7 +255,7 @@ class mainWidget(QtWidgets.QWidget):
         self.textEdit.append(f"Command has been sent to implant: cmd {command}\n")
         api_endpoint = "/tasks"
         #print("\nHere are the tasks that were added:\n")
-        request_payload_string = f'[{{"task_type":"execute","command":"{command}"}}]'
+        request_payload_string = f'[{{"task_id":"{beacon_ID}","task_type":"execute","command":"{command}"}}]'
         request_payload = json.loads(request_payload_string,cls=LazyDecoder)
         api_post_request(api_endpoint, request_payload)
         #pprint.pprint(api_post_request(api_endpoint, request_payload))

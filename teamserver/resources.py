@@ -45,7 +45,7 @@ class Ping(Resource):
             body = request.get_json()
             json_obj = json.loads(json.dumps(body))
             # Add a beacon UUID to each result object for tracking
-            json_obj['beacon_id'] = uuid_b
+            #json_obj['beacon_id'] = uuid_b
             Pinger(**json_obj).save()
             return "Success!", 200
         else:
@@ -68,7 +68,7 @@ class Tasks(Resource):
         # For each Task object, add it to the database
         for i in range(obj_num):
             # Add a task UUID to each task object for tracking
-            json_obj[i]['task_id'] = uuid_b #str(uuid.uuid4())
+            #json_obj[i]['task_id'] = uuid_b #str(uuid.uuid4())
             # Save Task object to database
             Task(**json_obj[i]).save()
             # Load the options provided for the task into an array for tracking in history

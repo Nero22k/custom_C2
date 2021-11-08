@@ -13,7 +13,7 @@ from time import sleep
 BR, FT, FR, FG, FY, FB, FM, FC, ST, SD, SB = B.RED, F.RESET, F.RED, F.GREEN, F.YELLOW, F.BLUE, F.MAGENTA, F.CYAN, S.RESET_ALL, S.DIM, S.BRIGHT
 
 # Configuration Settings
-listening_mgr_addr = "http://192.168.1.3:5000"
+listening_mgr_addr = "http://192.168.1.6:5000"
 beacon_IDs = [] # Our beacon array
 BeaconInteraction = False # Our switch between selection of beacons
 beacon_ID = "" # Our var to hold beacon data from list
@@ -233,21 +233,21 @@ class mainWidget(QtWidgets.QWidget):
             output_json1 = output_json[0]
             #print(output_json1)
 
-            output_key = sorted(output_json1.keys())[0]
-            #print(output_key)
+            output_keys = sorted(output_json1.keys()) # Match the beacon id instead of using indexes
+            #print(output_keys)
+            if beacon_ID in output_keys:
+                output_contents = output_json1[beacon_ID]
+                #print(output_contents)
 
-            output_contents = output_json1[output_key]
-            #print(output_contents)
+                output = output_contents["contents"]
 
-            output = output_contents["contents"]
+                # If theres a \n at the end delete it so we dont get an extra null line in the GUI
+                if re.search(r'[\r\n]{1,2}$', output):
+                    output = re.sub(r'\n$', '', output)
+                    output = re.sub(r'\r$', '', output)
 
-            # If theres a \n at the end delete it so we dont get an extra null line in the GUI
-            if re.search(r'[\r\n]{1,2}$', output):
-                output = re.sub(r'\n$', '', output)
-                output = re.sub(r'\r$', '', output)
-
-            # self.textEdit.setTextColor(QtGui.QColor('#FF2600'))  # Red
-            self.textEdit.append(f"Results: \n{output}")
+                # self.textEdit.setTextColor(QtGui.QColor('#FF2600'))  # Red
+                self.textEdit.append(f"Results: \n{output}")
         except:
             return
 
@@ -263,7 +263,7 @@ class mainWidget(QtWidgets.QWidget):
     def listProcesses(self):
         self.textEdit.append("Command has been executed\n")
         api_endpoint = "/tasks"
-        request_payload_string = '[{"task_type":"list-processes"}]'
+        request_payload_string = f'[{{"task_id":"{beacon_ID}","task_type":"list-processes"}}]'
         request_payload = json.loads(request_payload_string)
         api_post_request(api_endpoint, request_payload)
 

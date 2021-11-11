@@ -22,7 +22,7 @@ api = Api(app)
 
 # Define the routes for each of our resources
 api.add_resource(resources.Tasks, '/tasks', endpoint='tasks')
-api.add_resource(resources.Results, '/results')
+api.add_resource(resources.Results, '/results/<string:beacon_id>')
 api.add_resource(resources.History, '/history')
 api.add_resource(resources.Registers, '/reg')
 api.add_resource(resources.Ping, '/ping')

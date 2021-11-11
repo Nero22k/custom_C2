@@ -7,11 +7,11 @@ class Task(db.DynamicDocument):
 
 # Define Register object in database
 class Register(db.DynamicDocument):
-    task_id = db.StringField()
+    beacon_id = db.StringField()
 
 # Define Pinger object in database
 class Pinger(db.DynamicDocument):
-    task_id = db.StringField()
+    pings = db.StringField()
 
 # Define Result object in database
 class Result(db.DynamicDocument):

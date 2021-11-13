@@ -35,11 +35,18 @@ class Filesupload(Resource):
             # Return 400 BAD REQUEST
             abort(400, "no subdirectories allowed")
 
-        with open(os.path.join(UPLOAD_DIRECTORY, filename), "wb") as fp:
-            fp.write(request.data)
+        if 'Filedata' not in request.files:
+            return "Missing <Filedata>", 400
+        
+        if filename == '':
+            return "No File Name!", 400
+
+        file = request.files['Filedata']
+        filename = secure_filename(file.filename)
+        file.save(os.path.join(UPLOAD_DIRECTORY, filename))
 
         # Return 201 CREATED
-        return "", 201
+        return "File Uploaded!", 201
 
 
 class Registers(Resource):

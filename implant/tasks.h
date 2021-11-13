@@ -2,6 +2,7 @@
 
 #define _SILENCE_CXX17_C_HEADER_DEPRECATION_WARNING
 
+
 #include "results.h"
 
 #include <variant>

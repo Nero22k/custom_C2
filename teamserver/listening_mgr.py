@@ -26,6 +26,9 @@ api.add_resource(resources.Results, '/results/<string:beacon_id>')
 api.add_resource(resources.History, '/history')
 api.add_resource(resources.Registers, '/reg')
 api.add_resource(resources.Ping, '/ping')
+api.add_resource(resources.Fileslist, '/files')
+api.add_resource(resources.Filesdownload, '/files/<path:path>')
+api.add_resource(resources.Filesupload, '/files/<filename>')
 
 # Start the Flask app in debug mode
 if __name__ == '__main__':

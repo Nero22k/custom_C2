@@ -182,12 +182,21 @@ class mainWidget(QtWidgets.QWidget):
             self.textEdit.append("Beacon ID does not match!\n")
     
     def beacon_time(self,arg):
+        api_endpoint = "/implants/ping"
         while True:
+            json_array = api_get_request(api_endpoint)
+            if not json_array:
+                self.currentRowCount = arg
+                date_time = datetime.datetime.now().strftime("%H:%M:%S")
+                self.tableWidget.setItem(self.currentRowCount, 8, QtWidgets.QTableWidgetItem(date_time))
+                sleep(10)
             # Create row when beacon connects and add new row for each beacon connected
             self.currentRowCount = arg
-            #self.tableWidget.insertRow(self.currentRowCount)
-            date_time = datetime.datetime.now().strftime("%d-%m-%Y %H:%M:%S/%p")
-            self.tableWidget.setItem(self.currentRowCount, 8, QtWidgets.QTableWidgetItem(date_time))
+            for i in beacon_ID:
+                for k in range(len(json_array)):
+                    if i in json_array:
+                        date_time = json_array["last_alive"][::]
+                        self.tableWidget.setItem(self.currentRowCount, 8, QtWidgets.QTableWidgetItem(date_time))
             sleep(1)
 
     def check_beacons(self):

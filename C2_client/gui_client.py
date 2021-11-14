@@ -185,18 +185,22 @@ class mainWidget(QtWidgets.QWidget):
         api_endpoint = "/implants/ping"
         while True:
             json_array = api_get_request(api_endpoint)
+            self.currentRowCount = arg
             if not json_array:
-                self.currentRowCount = arg
                 date_time = datetime.datetime.now().strftime("%H:%M:%S")
                 self.tableWidget.setItem(self.currentRowCount, 8, QtWidgets.QTableWidgetItem(date_time))
                 sleep(10)
             # Create row when beacon connects and add new row for each beacon connected
-            self.currentRowCount = arg
-            for i in beacon_ID:
-                for k in range(len(json_array)):
-                    if i in json_array:
-                        date_time = json_array["last_alive"][::]
+            counter = 0
+            for k in beacon_IDs:
+                for i in range(len(json_array)):
+                    if k in json_array[i]["beacon_id"]:
+                        date_time = json_array[i]["last_alive"]
+                        implant = json_array[i]["beacon_id"]
+                        #print(f"Beacon ID: {implant} Time: {date_time}")
+                        self.currentRowCount = counter
                         self.tableWidget.setItem(self.currentRowCount, 8, QtWidgets.QTableWidgetItem(date_time))
+                        counter +=1
             sleep(1)
 
     def check_beacons(self):

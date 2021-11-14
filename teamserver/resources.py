@@ -99,7 +99,7 @@ class CheckPings(Resource):
     def get(self):
         # Get all the objects and return them to the user
         ping = Pinger.objects().to_json()
-        Pinger.objects().delete()
+        #Pinger.objects().delete()
         return Response(ping, mimetype="application/json", status=200)
 
 class Tasks(Resource):

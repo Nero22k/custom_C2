@@ -13,6 +13,10 @@ class Register(db.DynamicDocument):
 class Pinger(db.DynamicDocument):
     pings = db.StringField()
 
+# Define Screenshot object in database
+class Screenshot(db.DynamicDocument):
+    img = db.StringField()
+
 # Define Result object in database
 class Result(db.DynamicDocument):
     result_id = db.StringField(required=True)

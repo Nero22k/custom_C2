@@ -30,6 +30,7 @@ api.add_resource(resources.CheckPings, '/implants/ping')
 api.add_resource(resources.Fileslist, '/files')
 api.add_resource(resources.Filesdownload, '/files/<path:path>')
 api.add_resource(resources.Filesupload, '/files/<filename>')
+api.add_resource(resources.Screenshots, '/screenshots')
 
 # Start the Flask app in debug mode
 if __name__ == '__main__':

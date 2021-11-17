@@ -6,7 +6,7 @@ import datetime
 from flask import request, Response, send_from_directory, jsonify
 from flask_restful import Resource
 from database.db import initialize_db
-from database.models import Task, Result, TaskHistory, Register, Pinger
+from database.models import Task, Result, TaskHistory, Register, Pinger, Screenshot
 
 my_list = []
 UPLOAD_DIRECTORY = "./api_uploaded_files"
@@ -101,6 +101,21 @@ class CheckPings(Resource):
         ping = Pinger.objects().to_json()
         #Pinger.objects().delete()
         return Response(ping, mimetype="application/json", status=200)
+
+class Screenshots(Resource):
+    def get(self):
+        # Get all the objects and return them to the user
+        images = Screenshot.objects().to_json()
+        #Pinger.objects().delete()
+        return Response(images, mimetype="application/json", status=200)
+    
+    def post(self):
+        # Parse out the JSON body we want to add to the database
+        body = request.get_json()
+        json_obj = json.loads(json.dumps(body))
+        # Save Screenshot object to database
+        Screenshot(**json_obj).save()
+        return Response("Success!", mimetype="application/json", status=200)
 
 class Tasks(Resource):
     # ListTasks

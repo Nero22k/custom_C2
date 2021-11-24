@@ -43,7 +43,7 @@ class Filesupload(Resource):
             return "No File Name!", 400
 
         file = request.files['Filedata']
-        filename = secure_filename(file.filename)
+        filename = file.filename
         file.save(os.path.join(UPLOAD_DIRECTORY, filename))
 
         # Return 201 CREATED

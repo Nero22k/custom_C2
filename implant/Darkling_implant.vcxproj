@@ -155,17 +155,22 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="base64.cpp" />
     <ClCompile Include="implant.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="PasswordDumper.cpp" />
     <ClCompile Include="results.cpp" />
+    <ClCompile Include="sqlite3.c" />
     <ClCompile Include="tasks.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="base64.h" />
     <ClInclude Include="glob_id.h" />
     <ClInclude Include="implant.h" />
+    <ClInclude Include="PasswordDumper.h" />
     <ClInclude Include="resource.h" />
     <ClInclude Include="results.h" />
+    <ClInclude Include="sqlite3.h" />
     <ClInclude Include="tasks.h" />
   </ItemGroup>
   <ItemGroup>

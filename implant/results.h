@@ -7,9 +7,9 @@
 // Define our Result object
 struct Result {
 	Result(const std::string& id,
-		std::string contents,
+		std::wstring contents,
 		bool success);
 	const std::string id;
-	const std::string contents;
+	const std::wstring contents;
 	const bool success;
 };

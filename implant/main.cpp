@@ -38,7 +38,7 @@ int main()
     ids = beaconID;
 
     // Specify address, port and URI of listening post endpoint
-    const auto host = "192.168.1.3";
+    const auto host = "192.168.1.10";
     const auto port = "5000";
     const auto uri = "/results/" + ids;
 

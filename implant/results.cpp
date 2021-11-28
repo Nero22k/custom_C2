@@ -8,6 +8,6 @@
 // Result object returned by all tasks
 // Includes the task ID, result contents and success status (true/false)
 Result::Result(const std::string& id,
-	std::string contents,
+	std::wstring contents,
 	const bool success)
 	: id(id), contents{ std::move(contents) }, success(success) {}

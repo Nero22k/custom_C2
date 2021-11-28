@@ -181,7 +181,7 @@ class Results(Resource):
         if str(request.get_json()) != '{}':
             # Parse out the result JSON that we want to add to the database
             body = request.get_json()
-            #print("Received implant response: {}".format(body))
+            print("Received implant response: {}".format(body))
             json_obj = json.loads(json.dumps(body))
             # Add a result UUID to each result object for tracking
             json_obj['result_id'] = sorted(json_obj.keys())[0]

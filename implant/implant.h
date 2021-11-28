@@ -13,6 +13,7 @@
 #include <random>
 
 #include <boost/property_tree/ptree.hpp>
+
 // A structure is just like a class, but defaults to public!!
 struct Implant {
 	// Our implant constructor
@@ -38,7 +39,7 @@ private:
 	// Define our mutexes since we're doing async I/O stuff
 	std::mutex taskMutex, resultsMutex;
 	// Where we store our results
-	boost::property_tree::ptree results;
+	boost::property_tree::wptree results;
 	// Where we store our tasks
 	std::vector<Task> tasks;
 	// Generate random device
@@ -51,4 +52,4 @@ private:
 [[nodiscard]] std::string sendHttpRequest(std::string_view host,
 	std::string_view port,
 	std::string_view uri,
-	std::string_view payload);
+	std::wstring_view payload);
